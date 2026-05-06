@@ -4,6 +4,11 @@ import type { PublishStatus } from "../domain/publish.ts";
 import type { ReviewResult } from "../domain/review.ts";
 import type { ArticleStatus, ContentCategory } from "../domain/status.ts";
 import type { ValidationResult } from "../domain/validation.ts";
+import type {
+  ComplianceArticleInput,
+  ComplianceReport,
+  ComplianceService
+} from "./complianceService.ts";
 
 export const SERVICE_CONTRACTS = [
   "ArticleService",
@@ -12,7 +17,8 @@ export const SERVICE_CONTRACTS = [
   "EditorService",
   "ReviewService",
   "PublishPreparationService",
-  "ContentValidationService"
+  "ContentValidationService",
+  "ComplianceService"
 ] as const;
 
 export interface CreateArticleInput {
@@ -80,6 +86,7 @@ export interface ReviewView {
   article: unknown;
   images: ArticleImage[];
   riskNote?: string;
+  complianceReport: ComplianceReport;
   checklist: {
     hasTitle: boolean;
     hasBody: boolean;
@@ -122,4 +129,5 @@ export interface ContentValidationService {
   validateForReview(articleId: string): Promise<ValidationResult>;
 }
 
+export type { ComplianceArticleInput, ComplianceReport, ComplianceService };
 export type { GenerationConfig };

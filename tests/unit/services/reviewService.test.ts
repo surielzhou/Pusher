@@ -71,6 +71,32 @@ describe("review service", () => {
     });
   });
 
+  it("includes a finance compliance report in the review view", async () => {
+    const { articles, images, reviewService } = createHarness();
+    const article = await createReviewableArticle(articles);
+    await images.create({
+      articleId: article.id,
+      type: "suggestion",
+      description: "金融科技仪表盘配图"
+    });
+    await articles.update(article.id, {
+      body: "内幕消息显示这类产品可以保证收益。",
+      riskNote: undefined
+    });
+
+    const view = await reviewService.getReviewView(article.id);
+
+    assert.equal(view.complianceReport.status, "needs_attention");
+    assert.deepEqual(
+      view.complianceReport.issues.map((issue) => [issue.code, issue.term]),
+      [
+        ["finance_disclaimer_missing", undefined],
+        ["finance_sensitive_word", "内幕消息"],
+        ["finance_risky_expression", "保证收益"]
+      ]
+    );
+  });
+
   it("rejects review submissions unless the article is pending review", async () => {
     const { articles, reviewService } = createHarness();
     const article = await createReviewableArticle(articles, "editing");
