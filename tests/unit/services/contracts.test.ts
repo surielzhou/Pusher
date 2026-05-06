@@ -79,6 +79,14 @@ describe("service contracts", () => {
       },
       async replaceImage() {
         return { imageId: "image_001", type: "uploaded" };
+      },
+      async generateImageFromSuggestion() {
+        return {
+          imageId: "image_001",
+          type: "generated",
+          url: "https://cdn.example.com/generated.png",
+          source: "ai_image_generation"
+        };
       }
     };
 
@@ -142,6 +150,9 @@ describe("service contracts", () => {
       articleId: "article_001",
       description: "配图建议"
     })).type, "suggestion");
+    assert.equal((await imageService.generateImageFromSuggestion({
+      imageId: "image_001"
+    })).type, "generated");
     assert.equal((await editorService.submitForReview("article_001")).status, "pending_review");
     assert.equal((await reviewService.submitReview({
       articleId: "article_001",
