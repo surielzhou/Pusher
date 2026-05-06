@@ -564,14 +564,14 @@ Phase 4 完成。
 - Create: `src/components/publish/PublishPreparationPanel.tsx`
 - Test: `tests/e2e/publish-preparation.spec.ts`
 
-- [ ] 展示最终标题、摘要、正文预览。
-- [ ] 展示图片清单和插入位置。
-- [ ] 生成公众号可复制内容。
-- [ ] 支持复制标题、摘要、正文。
-- [ ] 支持标记已发布。
-- [ ] 支持标记发布失败并填写失败原因。
-- [ ] 非 `approved` 或 `pending_publish` 状态展示阻断提示。
-- [ ] 运行 `npm run test:e2e -- tests/e2e/publish-preparation.spec.ts`，预期通过。
+- [x] 展示最终标题、摘要、正文预览。
+- [x] 展示图片清单和插入位置。
+- [x] 生成公众号可复制内容。
+- [x] 支持复制标题、摘要、正文。
+- [x] 支持标记已发布。
+- [x] 支持标记发布失败并填写失败原因。
+- [x] 非 `approved` 或 `pending_publish` 状态展示阻断提示。
+- [x] 运行 `npm run test:e2e -- tests/e2e/publish-preparation.spec.ts`，预期通过。
 
 #### Task 5.3：实现内容工作台
 
@@ -582,11 +582,11 @@ Phase 4 完成。
 - Create: `src/components/workbench/RecentArticles.tsx`
 - Test: `tests/e2e/workbench.spec.ts`
 
-- [ ] 展示新建文章入口。
-- [ ] 展示待编辑、待Review、待发布、发布失败数量。
-- [ ] 展示最近文章列表。
-- [ ] 根据文章状态提供继续编辑、去 review、去发布准备操作。
-- [ ] 运行 `npm run test:e2e -- tests/e2e/workbench.spec.ts`，预期通过。
+- [x] 展示新建文章入口。
+- [x] 展示待编辑、待Review、待发布、发布失败数量。
+- [x] 展示最近文章列表。
+- [x] 根据文章状态提供继续编辑、去 review、去发布准备操作。
+- [x] 运行 `npm run test:e2e -- tests/e2e/workbench.spec.ts`，预期通过。
 
 #### Task 5.4：实现历史文章筛选
 
@@ -597,12 +597,12 @@ Phase 4 完成。
 - Create: `src/components/article/ArticleFilters.tsx`
 - Test: `tests/e2e/history.spec.ts`
 
-- [ ] 支持按内容方向筛选。
-- [ ] 支持按状态筛选。
-- [ ] 支持按关键词筛选。
-- [ ] 展示标题、内容方向、状态、更新时间、最近 review 结果、发布状态。
-- [ ] 支持进入详情、编辑、review、发布准备。
-- [ ] 运行 `npm run test:e2e -- tests/e2e/history.spec.ts`，预期通过。
+- [x] 支持按内容方向筛选。
+- [x] 支持按状态筛选。
+- [x] 支持按关键词筛选。
+- [x] 展示标题、内容方向、状态、更新时间、最近 review 结果、发布状态。
+- [x] 支持进入详情、编辑、review、发布准备。
+- [x] 运行 `npm run test:e2e -- tests/e2e/history.spec.ts`，预期通过。
 
 ### Phase 5 验收
 
@@ -610,6 +610,7 @@ Phase 4 完成。
 - 未通过或暂不发布文章不能发布准备。
 - 工作台能驱动主用户动线。
 - 历史文章能按方向和状态筛选。
+- 集成验证已通过：`npm test`、`npm run test:e2e`、`npm run typecheck`、`npm run build`。
 
 ## Phase 6：集成测试、验收和部署准备
 
