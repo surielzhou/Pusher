@@ -1,5 +1,6 @@
 import type { ArticleDetail, GenerationConfig } from "../domain/article.ts";
 import type { ArticleImage, ImageType } from "../domain/image.ts";
+import type { AppPermission, AuthUser } from "../domain/permissions.ts";
 import type { PublishStatus } from "../domain/publish.ts";
 import type { ReviewResult } from "../domain/review.ts";
 import type { ArticleStatus, ContentCategory } from "../domain/status.ts";
@@ -11,6 +12,7 @@ import type {
 } from "./complianceService.ts";
 
 export const SERVICE_CONTRACTS = [
+  "AuthService",
   "ArticleService",
   "GenerationService",
   "ImageService",
@@ -21,6 +23,17 @@ export const SERVICE_CONTRACTS = [
   "MaterialService",
   "ComplianceService"
 ] as const;
+
+export interface AuthSession {
+  user: AuthUser;
+  permissions: AppPermission[];
+}
+
+export interface AuthService {
+  getSession(userId: string): Promise<AuthSession>;
+  can(input: { userId: string; permission: AppPermission }): Promise<boolean>;
+  requirePermission(input: { userId: string; permission: AppPermission }): Promise<AuthSession>;
+}
 
 export interface CreateArticleInput {
   category: ContentCategory;

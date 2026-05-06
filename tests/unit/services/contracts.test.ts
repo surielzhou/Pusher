@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type {
+  AuthService,
   ArticleService,
   ContentValidationService,
   ComplianceService,
@@ -17,6 +18,7 @@ import { SERVICE_CONTRACTS } from "../../../src/services/contracts.ts";
 describe("service contracts", () => {
   it("publishes the required service contract names", () => {
     assert.deepEqual(SERVICE_CONTRACTS, [
+      "AuthService",
       "ArticleService",
       "GenerationService",
       "ImageService",
@@ -30,6 +32,34 @@ describe("service contracts", () => {
   });
 
   it("can be implemented by module-specific workers without sharing concrete code", async () => {
+    const authService: AuthService = {
+      async getSession() {
+        return {
+          user: {
+            id: "user_creator",
+            displayName: "创作者",
+            roles: ["creator"],
+            active: true
+          },
+          permissions: ["article:create", "article:edit", "article:view_own"]
+        };
+      },
+      async can() {
+        return true;
+      },
+      async requirePermission() {
+        return {
+          user: {
+            id: "user_creator",
+            displayName: "创作者",
+            roles: ["creator"],
+            active: true
+          },
+          permissions: ["article:create", "article:edit", "article:view_own"]
+        };
+      }
+    };
+
     const articleService: ArticleService = {
       async createArticle(input) {
         return { articleId: `article_${input.category}`, status: "drafting" };
@@ -181,6 +211,7 @@ describe("service contracts", () => {
       }
     };
 
+    assert.equal((await authService.can({ userId: "user_creator", permission: "article:create" })), true);
     assert.equal((await articleService.createArticle({ category: "finance", topic: "市场观察" })).status, "drafting");
     assert.equal((await generationService.generateDraft("article_001")).status, "editing");
     assert.equal((await imageService.saveImageSuggestion({
