@@ -141,6 +141,7 @@ tests/
 | Phase 5 | 发布准备、工作台、历史文章 | 高 | 发布导出、工作台、历史筛选 |
 | Phase 6 | 集成测试、验收和部署准备 | 中 | E2E、验收清单、部署文档 |
 | Phase 7 | 增强能力 | 高 | AI 图片、素材库、公众号接口、金融合规 |
+| Phase 8 | 生产化运营增强 | 高 | 持久化、API Runtime、来源管理、版本追踪、发布排期、运维审计 |
 
 ## Phase 0：工程骨架与契约冻结
 
@@ -727,6 +728,35 @@ Phase 6 完成。
 - [x] 运行 `npm run typecheck`，预期通过。
 - [x] 运行 `npm run build`，预期通过。
 
+## Phase 8：生产化运营增强
+
+### 目标
+
+在 Phase 7 增强能力完成后，把系统从 MVP/演示闭环推进到更适合长期运营的版本，重点补齐持久化、API Runtime、内容来源管理、版本追踪、发布排期、运维审计和基础 UI 壳层。
+
+### 依赖
+
+Phase 7 完成并合入 `main`。
+
+### 可并行工作包
+
+| Worker | 写入边界 | 说明 |
+| --- | --- | --- |
+| AI-8A 来源与素材线索 | `src/domain/source.ts`、`src/services/sourceService.ts`、`src/adapters/sources/**`、`src/components/article/SourcePanel.tsx` | 管理选题参考、事实点和来源可信度 |
+| AI-8B 版本追踪与 Diff | `src/domain/version.ts`、`src/repositories/versionRepository.ts`、`src/services/versionService.ts`、`src/components/article/VersionTimeline.tsx` | 保存内容版本、对比 review 前后差异 |
+| AI-8C 发布排期 | `src/domain/schedule.ts`、`src/repositories/scheduleRepository.ts`、`src/services/scheduleService.ts`、`src/app/schedule/page.tsx` | 支持待发布文章排期和发布日历 |
+| AI-8D API Runtime | `src/app/api/**`、`src/services/runtimeContainer.ts`、`tests/integration/api-runtime.test.ts` | 给页面和外部调用提供 HTTP API 边界 |
+| AI-8E 持久化与导入导出 | `src/repositories/fileStore.ts`、`src/repositories/persistence.ts`、`scripts/seed-demo-data.mjs`、`tests/integration/persistence.test.ts` | 从内存数据推进到本地文件或可替换持久化 |
+| AI-8F 运维审计与环境校验 | `src/config/env.ts`、`src/services/auditLogService.ts`、`src/app/audit/page.tsx`、`docs/部署验收/Phase8生产化验收清单.md` | 补齐配置校验、审计查看和生产化验收 |
+| AI-8G UI 壳层与可访问性 | `src/app/layout.tsx`、`src/app/globals.css`、`src/components/navigation/**`、`tests/e2e/navigation-accessibility.spec.ts` | 统一导航、状态入口和基础可访问性 |
+
+### Phase 8 集成验证
+
+- [ ] 运行 `npm test`，预期通过。
+- [ ] 运行 `npm run test:e2e`，预期通过。
+- [ ] 运行 `npm run typecheck`，预期通过。
+- [ ] 运行 `npm run build`，预期通过。
+
 ## 跨 Phase 集成检查点
 
 每个 phase 完成后，协调者执行以下检查：
@@ -803,6 +833,20 @@ AI-6A：集成测试
 AI-6B：MVP E2E
 AI-6C：测试方案文档
 AI-6D：部署验收文档
+```
+
+### 第六批并行
+
+Phase 8 面向生产化运营增强，可在 Phase 7 合并后并行推进，具体任务卡见 `docs/开发计划/Phase8并行开发拆分.md`。
+
+```text
+AI-8A：来源与参考材料
+AI-8B：版本追踪与 Diff
+AI-8C：发布排期
+AI-8D：API Runtime
+AI-8E：持久化与导入导出
+AI-8F：运维审计与环境校验
+AI-8G：UI 壳层与可访问性
 ```
 
 ## 风险与控制
