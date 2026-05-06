@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 const reviewPagePath = "src/app/articles/[articleId]/review/page.tsx";
 const reviewPanelPath = "src/components/review/ReviewPanel.tsx";
 const reviewChecklistPath = "src/components/review/ReviewChecklist.tsx";
+const compliancePanelPath = "src/components/review/CompliancePanel.tsx";
 const articlePreviewPath = "src/components/article/ArticlePreview.tsx";
 
 async function readRequiredSource(path: string) {
@@ -33,12 +34,14 @@ describe("article review E2E", () => {
 
     assertMatches(pageSource, /ReviewPanel/, "review route should render the review panel");
     assertMatches(pageSource, /ReviewChecklist/, "review route should render the review checklist");
+    assertMatches(pageSource, /CompliancePanel/, "review route should render the finance compliance panel");
     assertMatches(pageSource, /ArticlePreview/, "review route should render the read-only article preview");
     assertMatches(pageSource, /articleId/, "review route should read the article id route param");
 
     await Promise.all([
       readRequiredSource(reviewPanelPath),
       readRequiredSource(reviewChecklistPath),
+      readRequiredSource(compliancePanelPath),
       readRequiredSource(articlePreviewPath)
     ]);
   });
@@ -54,6 +57,16 @@ describe("article review E2E", () => {
     assertMatches(combinedSource, /内容方向|category/i, "review should show content category");
     assertMatches(combinedSource, /生成配置|generationConfig|topic|audience|style/i, "review should show generation config");
     assertMatches(combinedSource, /金融风险提示|riskNote|不构成投资建议/i, "review should show finance risk note");
+  });
+
+  it("shows finance compliance disclaimer, sensitive words, and risky expression findings", async () => {
+    const pageSource = await readRequiredSource(reviewPagePath);
+    const complianceSource = await readRequiredSource(compliancePanelPath);
+    const combinedSource = `${pageSource}\n${complianceSource}`;
+
+    assertMatches(combinedSource, /免责声明|requiredDisclaimer|不构成任何投资建议/i, "review should show disclaimer guidance");
+    assertMatches(combinedSource, /敏感词|finance_sensitive_word|sensitive/i, "review should show sensitive word checks");
+    assertMatches(combinedSource, /风险表达|finance_risky_expression|risky/i, "review should show risky expression checks");
   });
 
   it("supports approve, reject for edits, and not publish review decisions", async () => {

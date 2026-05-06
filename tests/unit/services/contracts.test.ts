@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import type {
   ArticleService,
   ContentValidationService,
+  ComplianceService,
   EditorService,
   GenerationService,
   ImageService,
@@ -23,7 +24,8 @@ describe("service contracts", () => {
       "ReviewService",
       "PublishPreparationService",
       "ContentValidationService",
-      "MaterialService"
+      "MaterialService",
+      "ComplianceService"
     ]);
   });
 
@@ -115,6 +117,11 @@ describe("service contracts", () => {
         return {
           article: {},
           images: [],
+          complianceReport: {
+            status: "not_applicable",
+            requiredDisclaimer: undefined,
+            issues: []
+          },
           checklist: {
             hasTitle: true,
             hasBody: true,
@@ -164,6 +171,16 @@ describe("service contracts", () => {
       }
     };
 
+    const complianceService: ComplianceService = {
+      analyzeArticle() {
+        return {
+          status: "passed",
+          requiredDisclaimer: "本文仅为信息分享，不构成任何投资建议。市场有风险，决策需谨慎。",
+          issues: []
+        };
+      }
+    };
+
     assert.equal((await articleService.createArticle({ category: "finance", topic: "市场观察" })).status, "drafting");
     assert.equal((await generationService.generateDraft("article_001")).status, "editing");
     assert.equal((await imageService.saveImageSuggestion({
@@ -187,5 +204,6 @@ describe("service contracts", () => {
       channel: "wechat_manual"
     })).articleStatus, "pending_publish");
     assert.equal((await validationService.validateForReview("article_001")).valid, true);
+    assert.equal(complianceService.analyzeArticle({ category: "finance" }).status, "passed");
   });
 });

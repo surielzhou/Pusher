@@ -6,6 +6,7 @@ import type { ArticleRepository } from "../repositories/articleRepository.ts";
 import type { ImageRepository } from "../repositories/imageRepository.ts";
 import type { ReviewRepository } from "../repositories/types.ts";
 import { assertTransition } from "./articleStatusService.ts";
+import { ComplianceServiceImpl, type ComplianceService } from "./complianceService.ts";
 import type { ReviewService, ReviewView } from "./contracts.ts";
 
 type ReviewDecisionStatus = "approved" | "review_rejected" | "not_publish";
@@ -51,17 +52,20 @@ export interface ReviewServiceDependencies {
   articles: Pick<ArticleRepository, "getById" | "update" | "recordStatusEvent">;
   images: Pick<ImageRepository, "listByArticleId">;
   reviews: Pick<ReviewRepository, "create">;
+  compliance?: Pick<ComplianceService, "analyzeArticle">;
 }
 
 export class ReviewServiceImpl implements ReviewService {
   private readonly articles: Pick<ArticleRepository, "getById" | "update" | "recordStatusEvent">;
   private readonly images: Pick<ImageRepository, "listByArticleId">;
   private readonly reviews: Pick<ReviewRepository, "create">;
+  private readonly compliance: Pick<ComplianceService, "analyzeArticle">;
 
   constructor(dependencies: ReviewServiceDependencies) {
     this.articles = dependencies.articles;
     this.images = dependencies.images;
     this.reviews = dependencies.reviews;
+    this.compliance = dependencies.compliance ?? new ComplianceServiceImpl();
   }
 
   async getReviewView(articleId: string): Promise<ReviewViewData> {
@@ -72,6 +76,7 @@ export class ReviewServiceImpl implements ReviewService {
       article,
       images,
       riskNote: article.riskNote,
+      complianceReport: this.compliance.analyzeArticle(article),
       checklist: {
         hasTitle: Boolean(article.title?.trim()),
         hasBody: Boolean(article.body?.trim()),

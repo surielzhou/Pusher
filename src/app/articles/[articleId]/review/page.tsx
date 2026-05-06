@@ -1,9 +1,11 @@
 import ArticlePreview from "../../../../components/article/ArticlePreview.tsx";
+import CompliancePanel from "../../../../components/review/CompliancePanel.tsx";
 import ReviewChecklist from "../../../../components/review/ReviewChecklist.tsx";
 import ReviewPanel from "../../../../components/review/ReviewPanel.tsx";
 import type { Article, ArticleDetail } from "../../../../domain/article.ts";
 import type { ArticleImage } from "../../../../domain/image.ts";
 import type { ReviewRecord } from "../../../../domain/review.ts";
+import { ComplianceServiceImpl } from "../../../../services/complianceService.ts";
 
 interface ReviewArticlePageProps {
   params: {
@@ -119,9 +121,12 @@ function getReviewChecklist(detail: ArticleDetail) {
   };
 }
 
+const complianceService = new ComplianceServiceImpl();
+
 export default function ReviewArticlePage({ params }: ReviewArticlePageProps) {
   const detail = getArticleDetail(params.articleId);
   const checklist = getReviewChecklist(detail);
+  const complianceReport = complianceService.analyzeArticle(detail.article);
 
   return (
     <main
@@ -148,6 +153,7 @@ export default function ReviewArticlePage({ params }: ReviewArticlePageProps) {
             images={detail.images}
             riskNote={detail.article.riskNote}
           />
+          <CompliancePanel report={complianceReport} />
         </div>
         <ArticlePreview article={detail.article} images={detail.images} />
       </div>
