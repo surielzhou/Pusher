@@ -484,14 +484,14 @@ Phase 1 和 Phase 3。
 - Create: `src/services/reviewService.ts`
 - Test: `tests/unit/services/reviewService.test.ts`
 
-- [ ] 写测试：只有 `pending_review` 状态可提交 review。
-- [ ] 写测试：通过后状态进入 `approved`，并写入 `reviewedVersion = contentVersion`。
-- [ ] 写测试：退回修改必须填写 comment，状态进入 `review_rejected`。
-- [ ] 写测试：暂不发布后状态进入 `not_publish`。
-- [ ] 写测试：ReviewRecord 记录 `articleVersion`、`result`、`comment`。
-- [ ] 实现 `getReviewView`。
-- [ ] 实现 `submitReview`。
-- [ ] 运行 `npm test -- tests/unit/services/reviewService.test.ts`，预期通过。
+- [x] 写测试：只有 `pending_review` 状态可提交 review。
+- [x] 写测试：通过后状态进入 `approved`，并写入 `reviewedVersion = contentVersion`。
+- [x] 写测试：退回修改必须填写 comment，状态进入 `review_rejected`。
+- [x] 写测试：暂不发布后状态进入 `not_publish`。
+- [x] 写测试：ReviewRecord 记录 `articleVersion`、`result`、`comment`。
+- [x] 实现 `getReviewView`。
+- [x] 实现 `submitReview`。
+- [x] 运行 `npm test -- tests/unit/services/reviewService.test.ts`，预期通过。
 
 #### Task 4.2：实现 Review 页面
 
@@ -502,14 +502,14 @@ Phase 1 和 Phase 3。
 - Create: `src/components/review/ReviewChecklist.tsx`
 - Test: `tests/e2e/article-review.spec.ts`
 
-- [ ] 展示完整图文预览。
-- [ ] 展示图片清单。
-- [ ] 展示内容方向、生成配置和金融风险提示。
-- [ ] 支持填写审核意见。
-- [ ] 支持通过、退回修改、暂不发布。
-- [ ] 退回修改时强制填写审核意见。
-- [ ] Review 页不直接编辑文章正文。
-- [ ] 运行 `npm run test:e2e -- tests/e2e/article-review.spec.ts`，预期通过。
+- [x] 展示完整图文预览。
+- [x] 展示图片清单。
+- [x] 展示内容方向、生成配置和金融风险提示。
+- [x] 支持填写审核意见。
+- [x] 支持通过、退回修改、暂不发布。
+- [x] 退回修改时强制填写审核意见。
+- [x] Review 页不直接编辑文章正文。
+- [x] 运行 `npm run test:e2e -- tests/e2e/article-review.spec.ts`，预期通过。
 
 ### Phase 4 验收
 
