@@ -17,6 +17,8 @@ const requiredFiles = [
   "src/services/contracts.ts",
   "src/services/articleStatusService.ts",
   "src/services/contentValidationService.ts",
+  "src/services/materialService.ts",
+  "src/components/article/MaterialPicker.tsx",
   "src/repositories/types.ts",
   "src/repositories/memoryStore.ts",
   "src/repositories/index.ts",
@@ -28,10 +30,11 @@ const requiredFiles = [
   "tests/unit/repositories/repositories.test.ts",
   "tests/unit/services/articleStatusService.test.ts",
   "tests/unit/services/contentValidationService.test.ts",
+  "tests/unit/services/materialService.test.ts",
   "tests/unit/services/phase1Workflow.test.ts",
   "docs/开发计划/Phase1合并记录.md"
 ];
 
 await Promise.all(requiredFiles.map((path) => access(path)));
 
-console.log("Phase 1 integration build baseline verified");
+console.log("Project build baseline verified");

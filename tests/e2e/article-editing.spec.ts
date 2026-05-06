@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 const editPagePath = "src/app/articles/[articleId]/edit/page.tsx";
 const articleEditorPath = "src/components/article/ArticleEditor.tsx";
 const imagePanelPath = "src/components/article/ImagePanel.tsx";
+const materialPickerPath = "src/components/article/MaterialPicker.tsx";
 const articlePreviewPath = "src/components/article/ArticlePreview.tsx";
 
 async function readRequiredSource(path: string) {
@@ -35,6 +36,7 @@ describe("article editing E2E", () => {
     await Promise.all([
       readRequiredSource(articleEditorPath),
       readRequiredSource(imagePanelPath),
+      readRequiredSource(materialPickerPath),
       readRequiredSource(articlePreviewPath)
     ]);
   });
@@ -64,6 +66,18 @@ describe("article editing E2E", () => {
     assertMatches(imagePanelSource, /name="url"|url/i, "uploaded or external images should capture a url");
     assertMatches(imagePanelSource, /name="source"|来源/i, "uploaded or external images should capture a source");
     assertMatches(imagePanelSource, /uploaded/i, "image replacement should support uploaded images");
+  });
+
+  it("supports selecting images from the material library", async () => {
+    const editPageSource = await readRequiredSource(editPagePath);
+    const imagePanelSource = await readRequiredSource(imagePanelPath);
+    const materialPickerSource = await readRequiredSource(materialPickerPath);
+    const combinedSource = `${editPageSource}\n${imagePanelSource}\n${materialPickerSource}`;
+
+    assertMatches(combinedSource, /MaterialPicker/, "edit route should compose the material picker");
+    assertMatches(combinedSource, /素材库|material library|material/i, "image panel should expose material library selection");
+    assertMatches(combinedSource, /name="materialId"|materialId/i, "material picker should submit a material id");
+    assertMatches(combinedSource, /type="hidden" value="material"|type:\s*"material"/i, "material selection should replace images as material type");
   });
 
   it("shows missing fields before review and makes pending review articles readonly", async () => {

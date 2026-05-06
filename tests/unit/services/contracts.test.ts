@@ -7,6 +7,7 @@ import type {
   EditorService,
   GenerationService,
   ImageService,
+  MaterialService,
   PublishPreparationService,
   ReviewService
 } from "../../../src/services/contracts.ts";
@@ -21,7 +22,8 @@ describe("service contracts", () => {
       "EditorService",
       "ReviewService",
       "PublishPreparationService",
-      "ContentValidationService"
+      "ContentValidationService",
+      "MaterialService"
     ]);
   });
 
@@ -90,6 +92,15 @@ describe("service contracts", () => {
       }
     };
 
+    const materialService: MaterialService = {
+      async listMaterials() {
+        return { items: [] };
+      },
+      async selectMaterialForImage() {
+        return { imageId: "image_001", materialId: "material_001", type: "material" };
+      }
+    };
+
     const editorService: EditorService = {
       async saveArticleContent(articleId) {
         return { articleId, status: "editing", contentVersion: 2 };
@@ -153,6 +164,10 @@ describe("service contracts", () => {
     assert.equal((await imageService.generateImageFromSuggestion({
       imageId: "image_001"
     })).type, "generated");
+    assert.equal((await materialService.selectMaterialForImage({
+      imageId: "image_001",
+      materialId: "material_001"
+    })).type, "material");
     assert.equal((await editorService.submitForReview("article_001")).status, "pending_review");
     assert.equal((await reviewService.submitReview({
       articleId: "article_001",

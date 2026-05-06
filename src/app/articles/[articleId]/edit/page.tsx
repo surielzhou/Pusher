@@ -4,6 +4,7 @@ import ImagePanel from "../../../../components/article/ImagePanel.tsx";
 import type { Article, ArticleDetail } from "../../../../domain/article.ts";
 import type { ArticleImage } from "../../../../domain/image.ts";
 import type { ReviewRecord } from "../../../../domain/review.ts";
+import { DEFAULT_MATERIAL_ASSETS } from "../../../../services/materialService.ts";
 
 interface EditArticlePageProps {
   params: {
@@ -134,7 +135,7 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
             missingFields={missingFields}
             readOnly={readOnly}
           />
-          <ImagePanel images={detail.images} readOnly={readOnly} />
+          <ImagePanel images={detail.images} materials={DEFAULT_MATERIAL_ASSETS} readOnly={readOnly} />
         </div>
         <ArticlePreview article={detail.article} images={detail.images} />
       </div>
