@@ -9,6 +9,9 @@
     "start": "node scripts/dev-placeholder.mjs",
     "test": "node --test --experimental-strip-types \"tests/unit/**/*.test.ts\"",
     "test:e2e": "node --test --experimental-strip-types \"tests/e2e/**/*.spec.ts\"",
-    "typecheck": "node --test --experimental-strip-types \"tests/unit/**/*.test.ts\""
+    "typecheck": "tsc --noEmit --project tsconfig.typecheck.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
   }
 }

@@ -17,7 +17,7 @@ export const ARTICLE_STATUSES = [
 
 export type ArticleStatus = (typeof ARTICLE_STATUSES)[number];
 
-const allowedTransitions = {
+const allowedTransitions: Record<ArticleStatus, ArticleStatus[]> = {
   drafting: ["editing", "generation_failed"],
   generation_failed: ["drafting"],
   editing: ["pending_review"],
@@ -28,7 +28,7 @@ const allowedTransitions = {
   pending_publish: ["published", "publish_failed", "editing"],
   publish_failed: ["pending_publish", "editing"],
   published: []
-} satisfies Record<ArticleStatus, ArticleStatus[]>;
+};
 
 export function getAllowedTransitions(status: ArticleStatus): ArticleStatus[] {
   return [...allowedTransitions[status]];
