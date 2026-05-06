@@ -66,6 +66,10 @@ export interface ImageService {
     url: string;
     source: string;
   }): Promise<{ imageId: string; type: Exclude<ImageType, "suggestion"> }>;
+  generateImageFromSuggestion(input: {
+    imageId: string;
+    instruction?: string;
+  }): Promise<{ imageId: string; type: "generated"; url: string; source: string }>;
 }
 
 export interface EditorService {

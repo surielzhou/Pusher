@@ -1,3 +1,4 @@
+import type { GeneratedImageAsset, ImageGenerationAdapter } from "../adapters/ai/imageGenerationAdapter.ts";
 import type { Article } from "../domain/article.ts";
 import type { ArticleImage, ImageType } from "../domain/image.ts";
 import type { ArticleStatus } from "../domain/status.ts";
@@ -39,33 +40,55 @@ export class ArticleImageNotEditableError extends Error {
   }
 }
 
+export type ImageGenerationErrorCode = "adapter_missing" | "adapter_failed";
+
+export class ImageGenerationError extends Error {
+  readonly code: ImageGenerationErrorCode;
+  readonly imageId: string;
+  override readonly cause?: unknown;
+
+  constructor(code: ImageGenerationErrorCode, imageId: string, message: string, cause?: unknown) {
+    super(message);
+    this.name = "ImageGenerationError";
+    this.code = code;
+    this.imageId = imageId;
+    this.cause = cause;
+  }
+}
+
 export interface ImageServiceDependencies {
   articles: Pick<ArticleRepository, "getById" | "update">;
   images: Pick<ImageRepository, "create" | "getById" | "listByArticleId" | "update">;
+  imageGenerationAdapter?: ImageGenerationAdapter;
 }
 
 export class ImageServiceImpl implements ImageService {
   private readonly articles: Pick<ArticleRepository, "getById" | "update">;
   private readonly images: Pick<ImageRepository, "create" | "getById" | "listByArticleId" | "update">;
+  private readonly imageGenerationAdapter?: ImageGenerationAdapter;
 
   constructor(dependencies: ImageServiceDependencies);
   constructor(
     articles: Pick<ArticleRepository, "getById" | "update">,
-    images: Pick<ImageRepository, "create" | "getById" | "listByArticleId" | "update">
+    images: Pick<ImageRepository, "create" | "getById" | "listByArticleId" | "update">,
+    imageGenerationAdapter?: ImageGenerationAdapter
   );
   constructor(
     dependenciesOrArticles: ImageServiceDependencies | Pick<ArticleRepository, "getById" | "update">,
-    images?: Pick<ImageRepository, "create" | "getById" | "listByArticleId" | "update">
+    images?: Pick<ImageRepository, "create" | "getById" | "listByArticleId" | "update">,
+    imageGenerationAdapter?: ImageGenerationAdapter
   ) {
     if (images) {
       this.articles = dependenciesOrArticles as Pick<ArticleRepository, "getById" | "update">;
       this.images = images;
+      this.imageGenerationAdapter = imageGenerationAdapter;
       return;
     }
 
     const dependencies = dependenciesOrArticles as ImageServiceDependencies;
     this.articles = dependencies.articles;
     this.images = dependencies.images;
+    this.imageGenerationAdapter = dependencies.imageGenerationAdapter;
   }
 
   async listArticleImages(articleId: string): Promise<{ items: ArticleImage[] }> {
@@ -125,6 +148,70 @@ export class ImageServiceImpl implements ImageService {
     return {
       imageId: image.id,
       type: input.type
+    };
+  }
+
+  async generateImageFromSuggestion(input: {
+    imageId: string;
+    instruction?: string;
+  }): Promise<{ imageId: string; type: "generated"; url: string; source: string }> {
+    if (!this.imageGenerationAdapter) {
+      throw new ImageGenerationError(
+        "adapter_missing",
+        input.imageId,
+        "Image generation adapter is not configured"
+      );
+    }
+
+    const existing = await this.images.getById(input.imageId);
+    if (!existing) {
+      throw new ImageNotFoundError(input.imageId);
+    }
+
+    if (existing.type !== "suggestion") {
+      throw new RepositoryError("invalid_input", "Only image suggestions can be generated");
+    }
+
+    const article = await this.getExistingArticle(existing.articleId);
+    this.assertArticleImagesEditable(article);
+
+    let generated: GeneratedImageAsset;
+    try {
+      generated = await this.imageGenerationAdapter.generateImage({
+        articleId: article.id,
+        imageId: existing.id,
+        category: article.category,
+        topic: article.generationConfig.topic,
+        description: existing.description,
+        position: existing.position,
+        altText: existing.altText,
+        instruction: input.instruction
+      });
+    } catch (error) {
+      throw new ImageGenerationError(
+        "adapter_failed",
+        input.imageId,
+        `Image generation failed: ${error instanceof Error ? error.message : String(error)}`,
+        error
+      );
+    }
+
+    assertPresentImageReference(generated.url);
+    assertPresentImageSource(generated.source);
+
+    const image = await this.images.update(input.imageId, {
+      type: "generated",
+      url: generated.url,
+      source: generated.source,
+      altText: generated.altText ?? existing.altText
+    });
+    await this.recordArticleImageChange(image.articleId);
+
+    return {
+      imageId: image.id,
+      type: "generated",
+      url: image.url ?? generated.url,
+      source: image.source ?? generated.source
     };
   }
 

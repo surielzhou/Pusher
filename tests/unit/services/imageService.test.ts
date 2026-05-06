@@ -9,17 +9,23 @@ import {
 import {
   ArticleNotFoundError,
   ArticleImageNotEditableError,
+  ImageGenerationError,
   ImageNotFoundError,
   ImageServiceImpl
 } from "../../../src/services/imageService.ts";
+import type {
+  GeneratedImageAsset,
+  ImageGenerationAdapter,
+  ImageGenerationRequest
+} from "../../../src/adapters/ai/imageGenerationAdapter.ts";
 
 const fixedNow = () => new Date("2026-05-06T00:00:00.000Z");
 
-function createHarness() {
+function createHarness(imageGenerationAdapter?: ImageGenerationAdapter) {
   const store = createMemoryStore();
   const articles = new InMemoryArticleRepository(store, fixedNow);
   const images = new InMemoryImageRepository(store, fixedNow);
-  const imageService = new ImageServiceImpl({ articles, images });
+  const imageService = new ImageServiceImpl({ articles, images, imageGenerationAdapter });
 
   return { articles, images, imageService };
 }
@@ -151,6 +157,78 @@ describe("image service", () => {
     assert.equal((await articles.getById(article.id))?.contentVersion, 3);
   });
 
+  it("generates a real image from an existing image suggestion", async () => {
+    const adapter = new FakeImageGenerationAdapter({
+      url: "https://cdn.example.com/generated/cover.png",
+      source: "openai:gpt-image-1",
+      altText: "AI Agent 工作流生成图"
+    });
+    const { articles, imageService } = createHarness(adapter);
+    const article = await createArticle(articles, { title: "AI Agent 商业化观察" });
+    const suggestion = await imageService.saveImageSuggestion({
+      articleId: article.id,
+      description: "封面使用 AI Agent 工作流节点的科技风图片",
+      position: "cover",
+      altText: "AI Agent 工作流"
+    });
+
+    const result = await imageService.generateImageFromSuggestion({
+      imageId: suggestion.imageId,
+      instruction: "公众号首图，16:9"
+    });
+
+    assert.deepEqual(result, {
+      imageId: suggestion.imageId,
+      type: "generated",
+      url: "https://cdn.example.com/generated/cover.png",
+      source: "openai:gpt-image-1"
+    });
+    assert.deepEqual(adapter.requests, [
+      {
+        articleId: article.id,
+        imageId: suggestion.imageId,
+        category: "tech_internet",
+        topic: "AI Agent",
+        description: "封面使用 AI Agent 工作流节点的科技风图片",
+        position: "cover",
+        altText: "AI Agent 工作流",
+        instruction: "公众号首图，16:9"
+      }
+    ]);
+
+    const [stored] = (await imageService.listArticleImages(article.id)).items;
+    assert.equal(stored.type, "generated");
+    assert.equal(stored.url, "https://cdn.example.com/generated/cover.png");
+    assert.equal(stored.source, "openai:gpt-image-1");
+    assert.equal(stored.altText, "AI Agent 工作流生成图");
+    assert.equal((await articles.getById(article.id))?.contentVersion, 3);
+  });
+
+  it("keeps the image suggestion unchanged when AI image generation fails", async () => {
+    const adapter = new FailingImageGenerationAdapter(new Error("provider timeout"));
+    const { articles, imageService } = createHarness(adapter);
+    const article = await createArticle(articles);
+    const suggestion = await imageService.saveImageSuggestion({
+      articleId: article.id,
+      description: "封面图建议"
+    });
+
+    await assert.rejects(
+      () => imageService.generateImageFromSuggestion({ imageId: suggestion.imageId }),
+      (error) => {
+        assert.equal(error instanceof ImageGenerationError, true);
+        assert.equal((error as ImageGenerationError).code, "adapter_failed");
+        assert.equal((error as ImageGenerationError).imageId, suggestion.imageId);
+        return true;
+      }
+    );
+
+    const [stored] = (await imageService.listArticleImages(article.id)).items;
+    assert.equal(stored.type, "suggestion");
+    assert.equal(stored.url, undefined);
+    assert.equal((await articles.getById(article.id))?.contentVersion, 2);
+  });
+
   it("moves approved articles back to editing after image changes", async () => {
     const { articles, imageService } = createHarness();
     const article = await createArticle(articles, { status: "approved" });
@@ -230,3 +308,29 @@ describe("image service", () => {
     );
   });
 });
+
+class FakeImageGenerationAdapter implements ImageGenerationAdapter {
+  readonly requests: ImageGenerationRequest[] = [];
+  private readonly image: GeneratedImageAsset;
+
+  constructor(image: GeneratedImageAsset) {
+    this.image = image;
+  }
+
+  async generateImage(request: ImageGenerationRequest): Promise<GeneratedImageAsset> {
+    this.requests.push(request);
+    return this.image;
+  }
+}
+
+class FailingImageGenerationAdapter implements ImageGenerationAdapter {
+  private readonly error: Error;
+
+  constructor(error: Error) {
+    this.error = error;
+  }
+
+  async generateImage(): Promise<GeneratedImageAsset> {
+    throw this.error;
+  }
+}
