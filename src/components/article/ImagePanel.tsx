@@ -1,11 +1,14 @@
 import type { ArticleImage } from "../../domain/image.ts";
+import type { MaterialAsset } from "../../services/contracts.ts";
+import MaterialPicker from "./MaterialPicker.tsx";
 
 interface ImagePanelProps {
   images: ArticleImage[];
+  materials?: MaterialAsset[];
   readOnly: boolean;
 }
 
-export default function ImagePanel({ images, readOnly }: ImagePanelProps) {
+export default function ImagePanel({ images, materials = [], readOnly }: ImagePanelProps) {
   return (
     <section
       aria-labelledby="article-images-heading"
@@ -156,6 +159,7 @@ export default function ImagePanel({ images, readOnly }: ImagePanelProps) {
                 替换图片
               </button>
             </form>
+            <MaterialPicker imageId={image.id} materials={materials} readOnly={readOnly} />
           </article>
         ))}
       </div>

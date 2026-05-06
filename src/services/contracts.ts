@@ -12,7 +12,8 @@ export const SERVICE_CONTRACTS = [
   "EditorService",
   "ReviewService",
   "PublishPreparationService",
-  "ContentValidationService"
+  "ContentValidationService",
+  "MaterialService"
 ] as const;
 
 export interface CreateArticleInput {
@@ -66,6 +67,31 @@ export interface ImageService {
     url: string;
     source: string;
   }): Promise<{ imageId: string; type: Exclude<ImageType, "suggestion"> }>;
+}
+
+export interface MaterialAsset {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  source: string;
+  category: ContentCategory;
+  tags: string[];
+  altText: string;
+}
+
+export interface MaterialListQuery {
+  category?: ContentCategory;
+  tag?: string;
+  keyword?: string;
+}
+
+export interface MaterialService {
+  listMaterials(query?: MaterialListQuery): Promise<{ items: MaterialAsset[] }>;
+  selectMaterialForImage(input: {
+    imageId: string;
+    materialId: string;
+  }): Promise<{ imageId: string; materialId: string; type: "material" }>;
 }
 
 export interface EditorService {
