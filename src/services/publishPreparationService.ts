@@ -1,5 +1,13 @@
 import { exportWechatManualContent } from "../adapters/export/wechatManualExporter.ts";
+import {
+  WECHAT_DRAFT_CHANNEL,
+  buildWechatDraftCreateInput,
+  toWechatDraftImageUploads,
+  type WechatDraftClient,
+  type WechatDraftUploadedImage
+} from "../adapters/wechat/draftClient.ts";
 import type { Article } from "../domain/article.ts";
+import type { ArticleImage } from "../domain/image.ts";
 import type { PublishRecord } from "../domain/publish.ts";
 import type { ArticleStatus } from "../domain/status.ts";
 import type { ArticleRepository } from "../repositories/articleRepository.ts";
@@ -63,21 +71,31 @@ export class PublishFailureReasonRequiredError extends Error {
   }
 }
 
+export class WechatDraftClientRequiredError extends Error {
+  constructor() {
+    super("Wechat draft client is required to create a WeChat draft");
+    this.name = "WechatDraftClientRequiredError";
+  }
+}
+
 export interface PublishPreparationServiceDependencies {
   articles: Pick<ArticleRepository, "getById" | "update" | "recordStatusEvent">;
   images: Pick<ImageRepository, "listByArticleId">;
   publishes: Pick<PublishRepository, "create" | "getById" | "update">;
+  wechatDrafts?: WechatDraftClient;
 }
 
 export class PublishPreparationServiceImpl implements PublishPreparationService {
   private readonly articles: Pick<ArticleRepository, "getById" | "update" | "recordStatusEvent">;
   private readonly images: Pick<ImageRepository, "listByArticleId">;
   private readonly publishes: Pick<PublishRepository, "create" | "getById" | "update">;
+  private readonly wechatDrafts?: WechatDraftClient;
 
   constructor(dependencies: PublishPreparationServiceDependencies) {
     this.articles = dependencies.articles;
     this.images = dependencies.images;
     this.publishes = dependencies.publishes;
+    this.wechatDrafts = dependencies.wechatDrafts;
   }
 
   async preparePublish(input: { articleId: string; channel: "wechat_manual" | string }): Promise<{
@@ -87,14 +105,7 @@ export class PublishPreparationServiceImpl implements PublishPreparationService 
     exportContent: string;
   }> {
     const article = await this.getExistingArticle(input.articleId);
-    if (!canPreparePublish(article.status)) {
-      throw new ArticleNotPublishableError(article.id, article.status);
-    }
-
-    if (article.reviewedVersion !== article.contentVersion) {
-      throw new ArticleReviewVersionMismatchError(article.id, article.reviewedVersion, article.contentVersion);
-    }
-
+    this.assertPublishableArticle(article);
     const images = await this.images.listByArticleId(article.id);
     const exported = exportWechatManualContent(article, images);
     const publishRecord = await this.publishes.create({
@@ -106,22 +117,50 @@ export class PublishPreparationServiceImpl implements PublishPreparationService 
       imageChecklist: exported.imageChecklist
     });
 
-    if (article.status === "approved") {
-      assertTransition(article.status, "pending_publish");
-      await this.articles.update(article.id, { status: "pending_publish" });
-      await this.articles.recordStatusEvent({
-        articleId: article.id,
-        fromStatus: article.status,
-        toStatus: "pending_publish",
-        reason: "publish prepared"
-      });
-    }
+    await this.moveArticleToPendingPublishIfNeeded(article, "publish prepared");
 
     return {
       publishRecordId: publishRecord.id,
       status: "prepared",
       articleStatus: "pending_publish",
       exportContent: exported.exportContent
+    };
+  }
+
+  async createWechatDraft(input: { articleId: string }): Promise<{
+    publishRecordId: string;
+    status: "prepared";
+    articleStatus: "pending_publish";
+    draftId: string;
+    uploadedMediaIds: string[];
+  }> {
+    const wechatDrafts = this.getWechatDraftClient();
+    const article = await this.getExistingArticle(input.articleId);
+    this.assertPublishableArticle(article);
+
+    const images = await this.images.listByArticleId(article.id);
+    const uploadedImages = await this.uploadWechatImages(wechatDrafts, images);
+    const draft = await wechatDrafts.createDraft(buildWechatDraftCreateInput(article, images, uploadedImages));
+    const uploadedMediaIds = uploadedImages.map((image) => image.mediaId);
+    const publishRecord = await this.publishes.create({
+      articleId: article.id,
+      articleVersion: article.contentVersion,
+      channel: WECHAT_DRAFT_CHANNEL,
+      status: "prepared",
+      exportContent: formatWechatDraftExportContent(article, draft.draftId, uploadedImages),
+      imageChecklist: toWechatDraftImageChecklist(images, uploadedImages),
+      externalDraftId: draft.draftId,
+      uploadedMediaIds
+    });
+
+    await this.moveArticleToPendingPublishIfNeeded(article, "wechat draft created");
+
+    return {
+      publishRecordId: publishRecord.id,
+      status: "prepared",
+      articleStatus: "pending_publish",
+      draftId: draft.draftId,
+      uploadedMediaIds
     };
   }
 
@@ -196,9 +235,104 @@ export class PublishPreparationServiceImpl implements PublishPreparationService 
 
     return publishRecord;
   }
+
+  private getWechatDraftClient(): WechatDraftClient {
+    if (!this.wechatDrafts) {
+      throw new WechatDraftClientRequiredError();
+    }
+
+    return this.wechatDrafts;
+  }
+
+  private assertPublishableArticle(article: Article): void {
+    if (!canPreparePublish(article.status)) {
+      throw new ArticleNotPublishableError(article.id, article.status);
+    }
+
+    if (article.reviewedVersion !== article.contentVersion) {
+      throw new ArticleReviewVersionMismatchError(article.id, article.reviewedVersion, article.contentVersion);
+    }
+  }
+
+  private async moveArticleToPendingPublishIfNeeded(article: Article, reason: string): Promise<void> {
+    if (article.status !== "approved") {
+      return;
+    }
+
+    assertTransition(article.status, "pending_publish");
+    await this.articles.update(article.id, { status: "pending_publish" });
+    await this.articles.recordStatusEvent({
+      articleId: article.id,
+      fromStatus: article.status,
+      toStatus: "pending_publish",
+      reason
+    });
+  }
+
+  private async uploadWechatImages(
+    wechatDrafts: WechatDraftClient,
+    images: ArticleImage[]
+  ): Promise<WechatDraftUploadedImage[]> {
+    const imageById = new Map(images.map((image) => [image.id, image]));
+    const uploadedImages: WechatDraftUploadedImage[] = [];
+
+    for (const imageUpload of toWechatDraftImageUploads(images)) {
+      const uploaded = await wechatDrafts.uploadImage(imageUpload);
+      const sourceImage = imageById.get(imageUpload.imageId);
+      uploadedImages.push({
+        imageId: imageUpload.imageId,
+        mediaId: uploaded.mediaId,
+        description: imageUpload.description,
+        position: sourceImage?.position
+      });
+    }
+
+    return uploadedImages;
+  }
 }
 
 function normalizeRequiredMessage(message: string): string | undefined {
   const normalized = message.trim();
   return normalized ? normalized : undefined;
+}
+
+function formatWechatDraftExportContent(
+  article: Article,
+  draftId: string,
+  uploadedImages: WechatDraftUploadedImage[]
+): string {
+  const uploadedSection = uploadedImages.length > 0
+    ? uploadedImages.map((image) => `- ${image.description}：${image.mediaId}`).join("\n")
+    : "- 无已上传图片素材";
+
+  return [
+    `微信草稿：${draftId}`,
+    `标题：${article.title ?? ""}`,
+    `摘要：${article.summary ?? ""}`,
+    "图片素材：",
+    uploadedSection
+  ].join("\n");
+}
+
+function toWechatDraftImageChecklist(
+  images: ArticleImage[],
+  uploadedImages: WechatDraftUploadedImage[]
+): Array<Record<string, string>> {
+  const mediaIdByImageId = new Map(uploadedImages.map((image) => [image.imageId, image.mediaId]));
+  return images.map((image) => withoutEmptyValues({
+    id: image.id,
+    type: image.type,
+    description: image.description,
+    position: image.position,
+    url: image.url,
+    source: image.source,
+    altText: image.altText,
+    mediaId: mediaIdByImageId.get(image.id)
+  }));
+}
+
+function withoutEmptyValues(values: Record<string, string | undefined>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(values).filter((entry): entry is [string, string] => Boolean(entry[1]?.trim()))
+  );
 }

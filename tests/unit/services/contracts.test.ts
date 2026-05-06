@@ -137,6 +137,15 @@ describe("service contracts", () => {
           exportContent: "公众号可复制内容"
         };
       },
+      async createWechatDraft() {
+        return {
+          publishRecordId: "publish_002",
+          status: "prepared",
+          articleStatus: "pending_publish",
+          draftId: "draft_001",
+          uploadedMediaIds: []
+        };
+      },
       async markPublished() {
         return { articleStatus: "published", publishStatus: "published" };
       },
