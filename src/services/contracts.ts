@@ -108,6 +108,15 @@ export interface PublishPreparationService {
     articleStatus: "pending_publish";
     exportContent: string;
   }>;
+  createWechatDraft(input: {
+    articleId: string;
+  }): Promise<{
+    publishRecordId: string;
+    status: "prepared";
+    articleStatus: "pending_publish";
+    draftId: string;
+    uploadedMediaIds: string[];
+  }>;
   markPublished(input: {
     publishRecordId: string;
     publishedAt?: Date;

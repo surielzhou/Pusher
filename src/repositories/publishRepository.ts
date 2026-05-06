@@ -35,6 +35,8 @@ export function createPublishRepository(deps: PublishRepositoryDeps): PublishRep
         status: input.status,
         exportContent: input.exportContent,
         imageChecklist: input.imageChecklist?.map((item) => ({ ...item })),
+        externalDraftId: input.externalDraftId,
+        uploadedMediaIds: input.uploadedMediaIds ? [...input.uploadedMediaIds] : undefined,
         errorMessage: input.errorMessage,
         publishedAt: input.publishedAt ? new Date(input.publishedAt) : undefined,
         createdAt: now()
@@ -80,6 +82,7 @@ export function createPublishRepository(deps: PublishRepositoryDeps): PublishRep
         imageChecklist: input.imageChecklist
           ? input.imageChecklist.map((item) => ({ ...item }))
           : existing.imageChecklist,
+        uploadedMediaIds: input.uploadedMediaIds ? [...input.uploadedMediaIds] : existing.uploadedMediaIds,
         publishedAt: input.publishedAt ? new Date(input.publishedAt) : existing.publishedAt
       };
 

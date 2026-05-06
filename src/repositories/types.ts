@@ -113,6 +113,8 @@ export interface CreatePublishRecordInput {
   status: PublishStatus;
   exportContent?: string;
   imageChecklist?: Array<Record<string, string>>;
+  externalDraftId?: string;
+  uploadedMediaIds?: string[];
   errorMessage?: string;
   publishedAt?: Date;
 }
@@ -121,6 +123,8 @@ export interface UpdatePublishRecordInput {
   status?: PublishStatus;
   exportContent?: string;
   imageChecklist?: Array<Record<string, string>>;
+  externalDraftId?: string;
+  uploadedMediaIds?: string[];
   errorMessage?: string;
   publishedAt?: Date;
 }

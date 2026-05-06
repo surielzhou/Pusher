@@ -22,9 +22,10 @@ function createHarness() {
   const articles = new InMemoryArticleRepository(store, fixedNow);
   const images = new InMemoryImageRepository(store, fixedNow);
   const publishes = new InMemoryPublishRepository(store, fixedNow);
-  const service = new PublishPreparationServiceImpl({ articles, images, publishes });
+  const wechatDrafts = new FakeWechatDraftClient();
+  const service = new PublishPreparationServiceImpl({ articles, images, publishes, wechatDrafts });
 
-  return { articles, images, publishes, service };
+  return { articles, images, publishes, service, wechatDrafts };
 }
 
 async function createPublishableArticle(
@@ -48,6 +49,30 @@ async function createPublishableArticle(
   });
 
   return articles.update(article.id, { reviewedVersion: article.contentVersion });
+}
+
+class FakeWechatDraftClient {
+  readonly uploadedImages: Array<Record<string, string>> = [];
+  readonly createdDrafts: Array<{
+    article: Record<string, string>;
+    uploadedImages: Array<Record<string, string>>;
+  }> = [];
+
+  async uploadImage(input: Record<string, string>): Promise<{ mediaId: string }> {
+    this.uploadedImages.push({ ...input });
+    return { mediaId: `media_image_${String(this.uploadedImages.length).padStart(3, "0")}` };
+  }
+
+  async createDraft(input: {
+    article: Record<string, string>;
+    uploadedImages: Array<Record<string, string>>;
+  }): Promise<{ draftId: string }> {
+    this.createdDrafts.push({
+      article: { ...input.article },
+      uploadedImages: input.uploadedImages.map((image) => ({ ...image }))
+    });
+    return { draftId: `draft_${String(this.createdDrafts.length).padStart(3, "0")}` };
+  }
 }
 
 describe("publish preparation service", () => {
@@ -205,6 +230,62 @@ describe("publish preparation service", () => {
     assert.match(result.exportContent, /https:\/\/example.com\/chart.png/);
     assert.match(result.exportContent, /投资者阅读场景配图/);
     assert.match(result.exportContent, /文末/);
+  });
+
+  it("creates a WeChat draft by uploading image assets and recording the draft result", async () => {
+    const { articles, images, publishes, service, wechatDrafts } = createHarness();
+    const article = await createPublishableArticle(articles);
+    const image = await images.create({
+      articleId: article.id,
+      type: "uploaded",
+      url: "https://cdn.example.com/chart.png",
+      source: "user_upload",
+      description: "金融科技仪表盘配图",
+      position: "正文第一段后",
+      altText: "AI 投研仪表盘"
+    });
+    await images.create({
+      articleId: article.id,
+      type: "suggestion",
+      description: "文末关注引导配图",
+      position: "文末"
+    });
+
+    const result = await service.createWechatDraft({ articleId: article.id });
+
+    const updated = await articles.getById(article.id);
+    const latestPublish = await publishes.latestByArticleId(article.id);
+
+    assert.deepEqual(wechatDrafts.uploadedImages, [
+      {
+        imageId: image.id,
+        url: "https://cdn.example.com/chart.png",
+        description: "金融科技仪表盘配图",
+        altText: "AI 投研仪表盘"
+      }
+    ]);
+    assert.equal(wechatDrafts.createdDrafts.length, 1);
+    assert.equal(wechatDrafts.createdDrafts[0]?.article.title, "AI 投研工具周报");
+    assert.equal(wechatDrafts.createdDrafts[0]?.article.digest, "面向公众号读者的 AI 投研工具观察摘要。");
+    assert.match(wechatDrafts.createdDrafts[0]?.article.content ?? "", /正文包含行业变化/);
+    assert.deepEqual(wechatDrafts.createdDrafts[0]?.uploadedImages, [
+      {
+        imageId: image.id,
+        mediaId: "media_image_001",
+        description: "金融科技仪表盘配图",
+        position: "正文第一段后"
+      }
+    ]);
+    assert.equal(result.publishRecordId, latestPublish?.id);
+    assert.equal(result.status, "prepared");
+    assert.equal(result.articleStatus, "pending_publish");
+    assert.equal(result.draftId, "draft_001");
+    assert.deepEqual(result.uploadedMediaIds, ["media_image_001"]);
+    assert.equal(updated?.status, "pending_publish");
+    assert.equal(latestPublish?.channel, "wechat_draft");
+    assert.equal(latestPublish?.status, "prepared");
+    assert.equal(latestPublish?.externalDraftId, "draft_001");
+    assert.deepEqual(latestPublish?.uploadedMediaIds, ["media_image_001"]);
   });
 
   it("marks a prepared publish record as published", async () => {

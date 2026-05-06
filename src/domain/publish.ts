@@ -10,6 +10,8 @@ export interface PublishRecord {
   status: PublishStatus;
   exportContent?: string;
   imageChecklist?: Array<Record<string, string>>;
+  externalDraftId?: string;
+  uploadedMediaIds?: string[];
   errorMessage?: string;
   publishedAt?: Date;
   createdAt: Date;

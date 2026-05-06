@@ -88,6 +88,7 @@ export function clonePublish(record: PublishRecord): PublishRecord {
   return {
     ...record,
     imageChecklist: record.imageChecklist?.map((item) => ({ ...item })),
+    uploadedMediaIds: record.uploadedMediaIds ? [...record.uploadedMediaIds] : undefined,
     publishedAt: record.publishedAt ? new Date(record.publishedAt) : undefined,
     createdAt: new Date(record.createdAt)
   };
