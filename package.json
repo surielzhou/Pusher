@@ -1,0 +1,14 @@
+{
+  "name": "pusher",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev-placeholder.mjs",
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/dev-placeholder.mjs",
+    "test": "node --test --experimental-strip-types \"tests/unit/**/*.test.ts\"",
+    "test:e2e": "node --test --experimental-strip-types \"tests/e2e/**/*.spec.ts\"",
+    "typecheck": "node --test --experimental-strip-types \"tests/unit/**/*.test.ts\""
+  }
+}
