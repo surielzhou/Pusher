@@ -546,15 +546,15 @@ Phase 4 完成。
 - Create: `src/adapters/export/wechatManualExporter.ts`
 - Test: `tests/unit/services/publishPreparationService.test.ts`
 
-- [ ] 写测试：只有 `approved` 或 `pending_publish` 状态能生成发布准备。
-- [ ] 写测试：`reviewedVersion != contentVersion` 时拒绝发布准备。
-- [ ] 写测试：导出内容包含标题、摘要、正文、图片清单和配图说明。
-- [ ] 写测试：标记已发布后状态进入 `published`。
-- [ ] 写测试：标记发布失败必须填写失败原因，状态进入 `publish_failed`。
-- [ ] 实现 `preparePublish`。
-- [ ] 实现 `markPublished`。
-- [ ] 实现 `markPublishFailed`。
-- [ ] 运行 `npm test -- tests/unit/services/publishPreparationService.test.ts`，预期通过。
+- [x] 写测试：只有 `approved` 或 `pending_publish` 状态能生成发布准备。
+- [x] 写测试：`reviewedVersion != contentVersion` 时拒绝发布准备。
+- [x] 写测试：导出内容包含标题、摘要、正文、图片清单和配图说明。
+- [x] 写测试：标记已发布后状态进入 `published`。
+- [x] 写测试：标记发布失败必须填写失败原因，状态进入 `publish_failed`。
+- [x] 实现 `preparePublish`。
+- [x] 实现 `markPublished`。
+- [x] 实现 `markPublishFailed`。
+- [x] 运行 `npm test -- tests/unit/services/publishPreparationService.test.ts`，预期通过。
 
 #### Task 5.2：实现发布准备页面
 
