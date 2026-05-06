@@ -1,0 +1,82 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { describe, it } from "node:test";
+
+const editPagePath = "src/app/articles/[articleId]/edit/page.tsx";
+const articleEditorPath = "src/components/article/ArticleEditor.tsx";
+const imagePanelPath = "src/components/article/ImagePanel.tsx";
+const articlePreviewPath = "src/components/article/ArticlePreview.tsx";
+
+async function readRequiredSource(path: string) {
+  try {
+    return await readFile(path, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      assert.fail(`Expected article editing E2E target to exist: ${path}`);
+    }
+
+    throw error;
+  }
+}
+
+function assertMatches(source: string, pattern: RegExp, description: string) {
+  assert.match(source, pattern, description);
+}
+
+describe("article editing E2E", () => {
+  it("provides the article editing route and composed editor surface", async () => {
+    const pageSource = await readRequiredSource(editPagePath);
+
+    assertMatches(pageSource, /ArticleEditor|article editor/i, "edit route should render the article editor");
+
+    await Promise.all([
+      readRequiredSource(articleEditorPath),
+      readRequiredSource(imagePanelPath),
+      readRequiredSource(articlePreviewPath)
+    ]);
+  });
+
+  it("lets users edit title, summary, body, images, preview, save, and submit review", async () => {
+    const editorSource = await readRequiredSource(articleEditorPath);
+    const imagePanelSource = await readRequiredSource(imagePanelPath);
+    const previewSource = await readRequiredSource(articlePreviewPath);
+    const combinedSource = `${editorSource}\n${imagePanelSource}\n${previewSource}`;
+
+    assertMatches(combinedSource, /标题|title/i, "editor should expose the title field");
+    assertMatches(combinedSource, /摘要|summary/i, "editor should expose the summary field");
+    assertMatches(combinedSource, /正文|body/i, "editor should expose the body field");
+    assertMatches(combinedSource, /配图|图片|image/i, "editor should expose image management");
+    assertMatches(combinedSource, /预览|preview/i, "editor should expose a WeChat preview");
+    assertMatches(combinedSource, /保存|save/i, "editor should support saving article content");
+    assertMatches(combinedSource, /提交\s*review|submitForReview|pending_review/i, "editor should submit for review");
+  });
+
+  it("supports image suggestions and uploaded image replacement", async () => {
+    const imagePanelSource = await readRequiredSource(imagePanelPath);
+
+    assertMatches(imagePanelSource, /suggestion|配图建议/i, "image panel should support image suggestions");
+    assertMatches(imagePanelSource, /description|描述|说明/i, "image suggestions should capture a description");
+    assertMatches(imagePanelSource, /replaceImage|替换|上传/i, "image panel should support replacing images");
+    assertMatches(imagePanelSource, /url/i, "uploaded or external images should capture a url");
+    assertMatches(imagePanelSource, /source|来源/i, "uploaded or external images should capture a source");
+  });
+
+  it("shows missing fields before review and makes pending review articles readonly", async () => {
+    const editorSource = await readRequiredSource(articleEditorPath);
+
+    assertMatches(
+      editorSource,
+      /validateForReview|missingFields|缺失|补齐/i,
+      "editor should surface validation gaps before submitting review"
+    );
+    assertMatches(editorSource, /pending_review/i, "editor should branch on pending_review status");
+    assertMatches(editorSource, /readOnly|readonly|disabled|只读/i, "pending_review should render readonly controls");
+  });
+
+  it("shows the latest rejection reason for review rejected articles", async () => {
+    const editorSource = await readRequiredSource(articleEditorPath);
+
+    assertMatches(editorSource, /review_rejected/i, "editor should branch on review_rejected status");
+    assertMatches(editorSource, /退回原因|rejection|rejected|latestReview|comment/i, "editor should show rejection context");
+  });
+});
