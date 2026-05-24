@@ -4,11 +4,29 @@ import { describe, it } from "node:test";
 
 import {
   CATEGORY_OPTIONS,
-  GENERATION_ENDPOINT,
+  CREATE_ARTICLE_ENDPOINT,
   buildGenerationPayload,
   isGenerationInputReady,
+  resolveArticleGenerationEndpoint,
+  resolveGenerationFailureMessage,
   resolveGenerationRedirect
 } from "../../src/components/article/generationFormModel.ts";
+
+async function readRequiredSource(path: string) {
+  try {
+    return await readFile(path, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      assert.fail(`Expected article generation E2E target to exist: ${path}`);
+    }
+
+    throw error;
+  }
+}
+
+function assertMatches(source: string, pattern: RegExp, description: string) {
+  assert.match(source, pattern, description);
+}
 
 describe("article generation page", () => {
   it("shows generation inputs for all supported content categories", async () => {
@@ -56,18 +74,55 @@ describe("article generation page", () => {
     );
   });
 
+  it("creates an article before generating a draft", async () => {
+    const modelSource = await readRequiredSource("src/components/article/generationFormModel.ts");
+    const formSource = await readRequiredSource("src/components/article/GenerationForm.tsx");
+    const combinedSource = `${modelSource}\n${formSource}`;
+
+    assertMatches(
+      combinedSource,
+      /CREATE_ARTICLE_ENDPOINT\s*=\s*"\/api\/articles"/,
+      "generation form should create articles through the article API"
+    );
+    assertMatches(
+      combinedSource,
+      /resolveArticleGenerationEndpoint/,
+      "generation form should resolve article-specific generation endpoint"
+    );
+    assertMatches(
+      combinedSource,
+      /\/generate/,
+      "generation form should call the article generation endpoint after creation"
+    );
+  });
+
   it("wires submit to the generation endpoint and edit redirect", async () => {
-    assert.equal(GENERATION_ENDPOINT, "/api/articles/generation");
+    assert.equal(CREATE_ARTICLE_ENDPOINT, "/api/articles");
+    assert.equal(resolveArticleGenerationEndpoint("article_123"), "/api/articles/article_123/generate");
     assert.equal(resolveGenerationRedirect("article_123"), "/articles/article_123/edit");
+    assert.equal(resolveGenerationFailureMessage({ error: { message: "  服务暂不可用  " } }), "服务暂不可用");
 
-    const pageSource = await readFile("src/app/articles/new/page.tsx", "utf8");
-    const formSource = await readFile("src/components/article/GenerationForm.tsx", "utf8");
+    const pageSource = await readRequiredSource("src/app/articles/new/page.tsx");
+    const formSource = await readRequiredSource("src/components/article/GenerationForm.tsx");
 
-    assert.match(pageSource, /<GenerationForm/);
-    assert.match(formSource, /export default function GenerationForm/);
-    assert.match(formSource, /fetch\(GENERATION_ENDPOINT/);
-    assert.match(formSource, /window\.location\.assign\(resolveGenerationRedirect/);
-    assert.match(formSource, /disabled=\{!canGenerate \|\| submitState === "submitting"\}/);
-    assert.match(formSource, /重试/);
+    assertMatches(pageSource, /<GenerationForm/, "new article route should render generation form");
+    assertMatches(formSource, /export default function GenerationForm/, "generation form should export the component");
+    assertMatches(formSource, /fetch\(CREATE_ARTICLE_ENDPOINT/, "generation form should create the article first");
+    assertMatches(
+      formSource,
+      /fetch\(resolveArticleGenerationEndpoint\(articleId\)/,
+      "generation form should generate after article creation"
+    );
+    assertMatches(
+      formSource,
+      /window\.location\.assign\(resolveGenerationRedirect/,
+      "generation should redirect to editing"
+    );
+    assertMatches(
+      formSource,
+      /disabled=\{!canGenerate \|\| submitState === "submitting"\}/,
+      "generation form should disable submit while unavailable or submitting"
+    );
+    assertMatches(formSource, /重试/, "generation form should support retry after failure");
   });
 });

@@ -4,9 +4,10 @@ import { type CSSProperties, type FormEvent, useState } from "react";
 import type { ContentCategory } from "../../domain/status.ts";
 import {
   CATEGORY_OPTIONS,
-  GENERATION_ENDPOINT,
+  CREATE_ARTICLE_ENDPOINT,
   buildGenerationPayload,
   isGenerationInputReady,
+  resolveArticleGenerationEndpoint,
   resolveGenerationFailureMessage,
   resolveGenerationRedirect,
   type GenerationFormInput,
@@ -47,23 +48,38 @@ export default function GenerationForm() {
     setLastFailure("");
 
     try {
-      const response = await fetch(GENERATION_ENDPOINT, {
+      const payload = buildGenerationPayload(input);
+      const createdResponse = await fetch(CREATE_ARTICLE_ENDPOINT, {
         method: "POST",
         headers: {
           "content-type": "application/json"
         },
-        body: JSON.stringify(buildGenerationPayload(input))
+        body: JSON.stringify(payload)
       });
 
-      const result = (await readGenerationResponse(response)) as
-        | ({ articleId?: string } & GenerationFailurePayload)
+      const created = (await readGenerationResponse(createdResponse)) as
+        | ({ data?: { articleId?: string } } & GenerationFailurePayload)
         | undefined;
 
-      if (!response.ok) {
-        throw new Error(resolveGenerationFailureMessage(result));
+      if (!createdResponse.ok) {
+        throw new Error(resolveGenerationFailureMessage(created?.error ? created : undefined));
       }
 
-      window.location.assign(resolveGenerationRedirect(result?.articleId ?? ""));
+      const articleId = created?.data?.articleId ?? "";
+      const generatedResponse = await fetch(resolveArticleGenerationEndpoint(articleId), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({})
+      });
+
+      const generated = (await readGenerationResponse(generatedResponse)) as GenerationFailurePayload | undefined;
+      if (!generatedResponse.ok) {
+        throw new Error(resolveGenerationFailureMessage(generated));
+      }
+
+      window.location.assign(resolveGenerationRedirect(articleId));
     } catch (error) {
       setSubmitState("failed");
       setLastFailure(error instanceof Error ? error.message : "生成失败，请重试。");

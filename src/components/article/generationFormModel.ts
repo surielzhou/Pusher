@@ -26,12 +26,12 @@ export interface GenerationRequestPayload {
 }
 
 export interface GenerationFailurePayload {
-  error?: string;
+  error?: string | { message?: string };
   message?: string;
   reason?: string;
 }
 
-export const GENERATION_ENDPOINT = "/api/articles/generation";
+export const CREATE_ARTICLE_ENDPOINT = "/api/articles";
 
 export const CATEGORY_OPTIONS: CategoryOption[] = [
   {
@@ -94,8 +94,18 @@ export function resolveGenerationRedirect(articleId: string): string {
   return `/articles/${encodeURIComponent(normalizedArticleId)}/edit`;
 }
 
+export function resolveArticleGenerationEndpoint(articleId: string): string {
+  const normalizedArticleId = articleId.trim();
+  if (!normalizedArticleId) {
+    throw new Error("生成接口没有返回文章 ID");
+  }
+
+  return `/api/articles/${encodeURIComponent(normalizedArticleId)}/generate`;
+}
+
 export function resolveGenerationFailureMessage(payload?: GenerationFailurePayload | null): string {
-  return normalizeOptionalText(payload?.message ?? payload?.error ?? payload?.reason) ?? "生成失败，请重试。";
+  const nestedError = typeof payload?.error === "object" ? payload.error.message : payload?.error;
+  return normalizeOptionalText(payload?.message ?? nestedError ?? payload?.reason) ?? "生成失败，请重试。";
 }
 
 function isContentCategory(value: unknown): value is ContentCategory {
