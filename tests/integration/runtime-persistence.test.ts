@@ -58,7 +58,7 @@ describe("runtime persistence", () => {
               title: "Local Runtime Article",
               summary: "Saved through the API runtime.",
               body: "This article proves local runtime persistence across reloads."
-            }),
+            }, "PATCH"),
             { params: { articleId } }
           )
         ).status,
@@ -136,9 +136,9 @@ describe("runtime persistence", () => {
   });
 });
 
-function jsonRequest(path: string, body?: unknown): Request {
+function jsonRequest(path: string, body?: unknown, method = "POST"): Request {
   return new Request(`http://pusher.test${path}`, {
-    method: "POST",
+    method,
     headers: {
       "content-type": "application/json"
     },

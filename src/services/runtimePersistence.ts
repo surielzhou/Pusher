@@ -24,7 +24,8 @@ export interface FileRuntimePersistenceOptions {
 }
 
 export function resolveRuntimeSnapshotPath(input?: string): string {
-  return input ?? process.env?.[RUNTIME_SNAPSHOT_PATH_ENV] ?? DEFAULT_RUNTIME_SNAPSHOT_PATH;
+  const configured = input?.trim() || process.env?.[RUNTIME_SNAPSHOT_PATH_ENV]?.trim();
+  return configured || DEFAULT_RUNTIME_SNAPSHOT_PATH;
 }
 
 export function createNoopRuntimePersistence(): RuntimePersistence {
