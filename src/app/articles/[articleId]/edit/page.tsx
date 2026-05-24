@@ -1,9 +1,11 @@
 import ArticleEditor from "../../../../components/article/ArticleEditor.tsx";
 import ArticlePreview from "../../../../components/article/ArticlePreview.tsx";
 import ImagePanel from "../../../../components/article/ImagePanel.tsx";
+import SourcePanel from "../../../../components/article/SourcePanel.tsx";
 import type { Article, ArticleDetail } from "../../../../domain/article.ts";
 import type { ArticleImage } from "../../../../domain/image.ts";
 import type { ReviewRecord } from "../../../../domain/review.ts";
+import type { ArticleSource } from "../../../../domain/source.ts";
 import { DEFAULT_MATERIAL_ASSETS } from "../../../../services/materialService.ts";
 
 interface EditArticlePageProps {
@@ -65,6 +67,34 @@ function buildImages(articleId: string): ArticleImage[] {
   ];
 }
 
+function buildSources(articleId: string): ArticleSource[] {
+  return [
+    {
+      id: `${articleId}_source_001`,
+      articleId,
+      title: "官方产品更新说明",
+      url: "https://example.com/product-update",
+      provider: "官方文档",
+      citationSummary: "用于确认 AI 生成图文发布准备流程中的功能边界和事实点。",
+      credibility: "high",
+      usageStatus: "used",
+      createdAt: new Date("2026-05-06T08:10:00.000Z"),
+      updatedAt: new Date("2026-05-06T09:00:00.000Z")
+    },
+    {
+      id: `${articleId}_source_002`,
+      articleId,
+      title: "内容运营复盘记录",
+      provider: "运营团队",
+      citationSummary: "记录人工 review 和发布准备中常见的标题、摘要、配图检查问题。",
+      credibility: "medium",
+      usageStatus: "unused",
+      createdAt: new Date("2026-05-06T08:12:00.000Z"),
+      updatedAt: new Date("2026-05-06T08:12:00.000Z")
+    }
+  ];
+}
+
 function buildLatestReview(article: Article): ReviewRecord | undefined {
   if (article.status !== "review_rejected") return undefined;
 
@@ -110,6 +140,7 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
   const detail = getArticleDetail(params.articleId);
   const readOnly = detail.article.status === "pending_review";
   const missingFields = getMissingFields(detail);
+  const sources = buildSources(params.articleId);
 
   return (
     <main
@@ -135,6 +166,7 @@ export default function EditArticlePage({ params }: EditArticlePageProps) {
             missingFields={missingFields}
             readOnly={readOnly}
           />
+          <SourcePanel sources={sources} readOnly={readOnly} />
           <ImagePanel images={detail.images} materials={DEFAULT_MATERIAL_ASSETS} readOnly={readOnly} />
         </div>
         <ArticlePreview article={detail.article} images={detail.images} />
