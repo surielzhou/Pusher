@@ -1,14 +1,20 @@
 import ArticlePreview from "../../../../components/article/ArticlePreview.tsx";
 import PublishPreparationPanel from "../../../../components/publish/PublishPreparationPanel.tsx";
+import SchedulePanel from "../../../../components/publish/SchedulePanel.tsx";
 import type { Article, ArticleDetail } from "../../../../domain/article.ts";
 import type { ArticleImage } from "../../../../domain/image.ts";
 import type { PublishRecord } from "../../../../domain/publish.ts";
+import type { PublishSchedule } from "../../../../domain/schedule.ts";
 import { canPreparePublish } from "../../../../services/articleStatusService.ts";
 
 interface PublishArticlePageProps {
   params: {
     articleId: string;
   };
+}
+
+interface PublishArticleDetail extends ArticleDetail {
+  nextSchedule?: PublishSchedule;
 }
 
 function buildArticle(articleId: string): Article {
@@ -99,13 +105,32 @@ function buildLatestPublish(article: Article): PublishRecord | undefined {
   };
 }
 
-function getArticleDetail(articleId: string): ArticleDetail {
+function buildNextSchedule(article: Article): PublishSchedule | undefined {
+  if (article.status !== "pending_publish" || article.id.includes("failed")) {
+    return undefined;
+  }
+
+  return {
+    id: `${article.id}_schedule_001`,
+    articleId: article.id,
+    articleVersion: article.contentVersion,
+    channel: "wechat_manual",
+    scheduledFor: new Date("2026-05-07T01:30:00.000Z"),
+    status: "scheduled",
+    note: "早高峰推送窗口",
+    createdAt: new Date("2026-05-06T11:30:00.000Z"),
+    updatedAt: new Date("2026-05-06T11:30:00.000Z")
+  };
+}
+
+function getArticleDetail(articleId: string): PublishArticleDetail {
   const article = buildArticle(articleId);
 
   return {
     article,
     images: buildImages(articleId),
-    latestPublish: buildLatestPublish(article)
+    latestPublish: buildLatestPublish(article),
+    nextSchedule: buildNextSchedule(article)
   };
 }
 
@@ -128,15 +153,18 @@ export default function PublishArticlePage({ params }: PublishArticlePageProps) 
           gap: 20,
           gridTemplateColumns: "minmax(320px, 0.95fr) minmax(0, 1.05fr)",
           margin: "0 auto",
-          maxWidth: 1240
+          maxWidth: 1280
         }}
       >
-        <PublishPreparationPanel
-          article={detail.article}
-          canPublish={canPublish}
-          images={detail.images}
-          latestPublish={detail.latestPublish}
-        />
+        <div style={{ display: "grid", gap: 16 }}>
+          <PublishPreparationPanel
+            article={detail.article}
+            canPublish={canPublish}
+            images={detail.images}
+            latestPublish={detail.latestPublish}
+          />
+          <SchedulePanel article={detail.article} canSchedule={canPublish} nextSchedule={detail.nextSchedule} />
+        </div>
         <ArticlePreview article={detail.article} images={detail.images} />
       </div>
     </main>
