@@ -4,9 +4,10 @@ import { describe, it } from "node:test";
 
 import {
   CATEGORY_OPTIONS,
-  GENERATION_ENDPOINT,
+  CREATE_ARTICLE_ENDPOINT,
   buildGenerationPayload,
   isGenerationInputReady,
+  resolveArticleGenerationEndpoint,
   resolveGenerationRedirect
 } from "../../src/components/article/generationFormModel.ts";
 
@@ -51,9 +52,15 @@ describe("MVP acceptance E2E flow", () => {
         requireRiskNote: true
       }
     );
-    assert.equal(GENERATION_ENDPOINT, "/api/articles/generation");
+    assert.equal(CREATE_ARTICLE_ENDPOINT, "/api/articles");
+    assert.equal(resolveArticleGenerationEndpoint("article_001"), "/api/articles/article_001/generate");
     assert.equal(resolveGenerationRedirect("article_001"), "/articles/article_001/edit");
-    assertMatches(generationFormSource, /fetch\(GENERATION_ENDPOINT/, "generation form should submit generation request");
+    assertMatches(generationFormSource, /fetch\(CREATE_ARTICLE_ENDPOINT/, "generation form should create an article first");
+    assertMatches(
+      generationFormSource,
+      /fetch\(resolveArticleGenerationEndpoint\(articleId\)/,
+      "generation form should submit generation request after creation"
+    );
     assertMatches(generationFormSource, /window\.location\.assign/, "generation should redirect to editing");
   });
 
