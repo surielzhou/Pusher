@@ -7,7 +7,7 @@
     "dev": "node scripts/dev-placeholder.mjs",
     "build": "node scripts/build.mjs",
     "start": "node scripts/dev-placeholder.mjs",
-    "test": "node --test --experimental-strip-types \"tests/unit/**/*.test.ts\"",
+    "test": "node --test --experimental-strip-types \"tests/unit/**/*.test.ts\" \"tests/integration/**/*.test.ts\"",
     "test:e2e": "node --test --experimental-strip-types \"tests/e2e/**/*.spec.ts\"",
     "typecheck": "tsc --noEmit --project tsconfig.typecheck.json"
   },

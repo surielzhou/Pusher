@@ -752,10 +752,10 @@ Phase 7 完成并合入 `main`。
 
 ### Phase 8 集成验证
 
-- [ ] 运行 `npm test`，预期通过。
-- [ ] 运行 `npm run test:e2e`，预期通过。
-- [ ] 运行 `npm run typecheck`，预期通过。
-- [ ] 运行 `npm run build`，预期通过。
+- [x] 运行 `npm test`，预期通过。
+- [x] 运行 `npm run test:e2e`，预期通过。
+- [x] 运行 `npm run typecheck`，预期通过。
+- [x] 运行 `npm run build`，预期通过。
 
 ## 跨 Phase 集成检查点
 
