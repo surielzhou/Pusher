@@ -29,15 +29,26 @@ export default function GenerationForm() {
   const [input, setInput] = useState<GenerationFormInput>(initialInput);
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [lastFailure, setLastFailure] = useState("");
+  const [createdArticleId, setCreatedArticleId] = useState("");
   const canGenerate = isGenerationInputReady(input);
 
   function updateField(field: keyof GenerationFormInput) {
     return (event: { target: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement }) => {
+      const value = event.target.value;
+      setCreatedArticleId("");
       setInput((current) => ({
         ...current,
-        [field]: event.target.value
+        [field]: value
       }));
     };
+  }
+
+  function updateCategory(category: ContentCategory) {
+    setCreatedArticleId("");
+    setInput((current) => ({
+      ...current,
+      category
+    }));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -48,24 +59,33 @@ export default function GenerationForm() {
     setLastFailure("");
 
     try {
-      const payload = buildGenerationPayload(input);
-      const createdResponse = await fetch(CREATE_ARTICLE_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
+      let articleId = createdArticleId;
 
-      const created = (await readGenerationResponse(createdResponse)) as
-        | ({ data?: { articleId?: string } } & GenerationFailurePayload)
-        | undefined;
+      if (!createdArticleId) {
+        const payload = buildGenerationPayload(input);
+        const createdResponse = await fetch(CREATE_ARTICLE_ENDPOINT, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
 
-      if (!createdResponse.ok) {
-        throw new Error(resolveGenerationFailureMessage(created?.error ? created : undefined));
+        const created = (await readGenerationResponse(createdResponse)) as
+          | ({ data?: { articleId?: string } } & GenerationFailurePayload)
+          | undefined;
+
+        if (!createdResponse.ok) {
+          throw new Error(resolveGenerationFailureMessage(created?.error ? created : undefined));
+        }
+
+        articleId = created?.data?.articleId ?? "";
       }
 
-      const articleId = created?.data?.articleId ?? "";
+      if (!createdArticleId) {
+        setCreatedArticleId(articleId);
+      }
+
       const generatedResponse = await fetch(resolveArticleGenerationEndpoint(articleId), {
         method: "POST",
         headers: {
@@ -113,12 +133,7 @@ export default function GenerationForm() {
                   <input
                     checked={selected}
                     name="category"
-                    onChange={() =>
-                      setInput((current) => ({
-                        ...current,
-                        category: option.value
-                      }))
-                    }
+                    onChange={() => updateCategory(option.value)}
                     required
                     style={styles.radio}
                     type="radio"

@@ -125,4 +125,25 @@ describe("article generation page", () => {
     );
     assertMatches(formSource, /重试/, "generation form should support retry after failure");
   });
+
+  it("reuses the created article when retrying generation after a failure", async () => {
+    const formSource = await readRequiredSource("src/components/article/GenerationForm.tsx");
+
+    assertMatches(
+      formSource,
+      /const\s+\[createdArticleId,\s*setCreatedArticleId\]\s*=\s*useState\(""\)/,
+      "generation form should retain the created article id after article creation succeeds"
+    );
+    assertMatches(formSource, /setCreatedArticleId\(articleId\)/, "generation form should store the created article id");
+    assertMatches(
+      formSource,
+      /if\s*\(!createdArticleId\)\s*\{[\s\S]*fetch\(CREATE_ARTICLE_ENDPOINT/,
+      "generation form should skip article creation when retrying an existing created article"
+    );
+    assertMatches(
+      formSource,
+      /setCreatedArticleId\(""\)/,
+      "generation form should clear the retained article id when generation inputs change"
+    );
+  });
 });
