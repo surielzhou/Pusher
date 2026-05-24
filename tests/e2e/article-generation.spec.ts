@@ -101,6 +101,8 @@ describe("article generation page", () => {
     assert.equal(resolveArticleGenerationEndpoint("article_123"), "/api/articles/article_123/generate");
     assert.equal(resolveGenerationRedirect("article_123"), "/articles/article_123/edit");
     assert.equal(resolveGenerationFailureMessage({ error: { message: "  服务暂不可用  " } }), "服务暂不可用");
+    assert.equal(resolveGenerationFailureMessage({ message: "  创建失败  " }), "创建失败");
+    assert.equal(resolveGenerationFailureMessage({ reason: "  配额不足  " }), "配额不足");
 
     const pageSource = await readRequiredSource("src/app/articles/new/page.tsx");
     const formSource = await readRequiredSource("src/components/article/GenerationForm.tsx");
@@ -124,6 +126,16 @@ describe("article generation page", () => {
       "generation form should disable submit while unavailable or submitting"
     );
     assertMatches(formSource, /重试/, "generation form should support retry after failure");
+  });
+
+  it("preserves create failure messages from parsed response payloads", async () => {
+    const formSource = await readRequiredSource("src/components/article/GenerationForm.tsx");
+
+    assertMatches(
+      formSource,
+      /if\s*\(!createdResponse\.ok\)\s*\{\s*throw new Error\(resolveGenerationFailureMessage\(created\)\)/,
+      "create failure should pass the parsed payload so error, message, and reason are preserved"
+    );
   });
 
   it("reuses the created article when retrying generation after a failure", async () => {

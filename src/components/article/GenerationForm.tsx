@@ -76,7 +76,7 @@ export default function GenerationForm() {
           | undefined;
 
         if (!createdResponse.ok) {
-          throw new Error(resolveGenerationFailureMessage(created?.error ? created : undefined));
+          throw new Error(resolveGenerationFailureMessage(created));
         }
 
         articleId = created?.data?.articleId ?? "";
