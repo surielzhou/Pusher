@@ -7,11 +7,12 @@ import {
   InMemoryPublishRepository,
   InMemoryReviewRepository,
   createMemoryStore,
-  createSequentialIdFactory,
   systemClock,
   type RepositoryClock,
   type RepositoryIdFactory
 } from "../repositories/index.ts";
+import type { MemoryRepositoryStore } from "../repositories/memoryStore.ts";
+import { createRepositoryIdFactory } from "../repositories/persistence.ts";
 import { ArticleServiceImpl } from "./articleService.ts";
 import { AuthServiceImpl } from "./authService.ts";
 import { ComplianceServiceImpl, type ComplianceService } from "./complianceService.ts";
@@ -33,8 +34,14 @@ import { ImageServiceImpl } from "./imageService.ts";
 import { MaterialServiceImpl } from "./materialService.ts";
 import { PublishPreparationServiceImpl } from "./publishPreparationService.ts";
 import { ReviewServiceImpl } from "./reviewService.ts";
+import {
+  createFileRuntimePersistence,
+  createNoopRuntimePersistence,
+  type RuntimePersistence
+} from "./runtimePersistence.ts";
 
 export interface RuntimeContainer {
+  store: MemoryRepositoryStore;
   authService: AuthService;
   articleService: ArticleService;
   generationService: GenerationService;
@@ -45,9 +52,12 @@ export interface RuntimeContainer {
   contentValidationService: ContentValidationService;
   materialService: MaterialService;
   complianceService: ComplianceService;
+  persist(): Promise<void>;
 }
 
 export interface RuntimeContainerOptions {
+  store?: MemoryRepositoryStore;
+  persistence?: RuntimePersistence;
   textGenerationAdapter?: TextGenerationAdapter;
   imageGenerationAdapter?: ImageGenerationAdapter;
   users?: readonly AuthUser[];
@@ -56,16 +66,50 @@ export interface RuntimeContainerOptions {
 }
 
 let runtimeContainer: RuntimeContainer | undefined;
+let runtimeContainerPromise: Promise<RuntimeContainer> | undefined;
 
 export function getRuntimeContainer(): RuntimeContainer {
   runtimeContainer ??= createRuntimeContainer();
+  runtimeContainerPromise ??= Promise.resolve(runtimeContainer);
   return runtimeContainer;
 }
 
+export async function getRuntimeContainerForApi(): Promise<RuntimeContainer> {
+  if (runtimeContainer) return runtimeContainer;
+
+  runtimeContainerPromise ??= createRuntimeContainerFromPersistence({
+    persistence: createFileRuntimePersistence()
+  });
+  runtimeContainer = await runtimeContainerPromise;
+  return runtimeContainer;
+}
+
+export async function runRuntimeMutation<T>(mutation: (runtime: RuntimeContainer) => Promise<T>): Promise<T> {
+  const runtime = await getRuntimeContainerForApi();
+  const result = await mutation(runtime);
+  await runtime.persist();
+  return result;
+}
+
+export async function createRuntimeContainerFromPersistence(
+  options: RuntimeContainerOptions = {}
+): Promise<RuntimeContainer> {
+  const persistence = options.persistence ?? createFileRuntimePersistence();
+  const store = options.store ?? (await persistence.loadStore());
+
+  return createRuntimeContainer({
+    ...options,
+    store,
+    persistence,
+    createId: options.createId ?? createRepositoryIdFactory(store)
+  });
+}
+
 export function createRuntimeContainer(options: RuntimeContainerOptions = {}): RuntimeContainer {
-  const store = createMemoryStore();
+  const store = options.store ?? createMemoryStore();
+  const persistence = options.persistence ?? createNoopRuntimePersistence();
   const now = options.now ?? systemClock;
-  const createId = options.createId ?? createSequentialIdFactory();
+  const createId = options.createId ?? createRepositoryIdFactory(store);
   const articles = new InMemoryArticleRepository(store, now, createId);
   const images = new InMemoryImageRepository(store, now, createId);
   const reviews = new InMemoryReviewRepository(store, now, createId);
@@ -103,6 +147,7 @@ export function createRuntimeContainer(options: RuntimeContainerOptions = {}): R
   const materialService = new MaterialServiceImpl({ imageService });
 
   return {
+    store,
     authService,
     articleService,
     generationService,
@@ -112,17 +157,21 @@ export function createRuntimeContainer(options: RuntimeContainerOptions = {}): R
     publishPreparationService,
     contentValidationService,
     materialService,
-    complianceService
+    complianceService,
+    persist: () => persistence.saveStore(store)
   };
 }
 
 export function resetRuntimeContainerForTests(options: RuntimeContainerOptions = {}): RuntimeContainer {
   runtimeContainer = createRuntimeContainer(options);
+  runtimeContainerPromise = Promise.resolve(runtimeContainer);
   return runtimeContainer;
 }
 
-export function setRuntimeContainerForTests(container: RuntimeContainer): void {
+export async function setRuntimeContainerForTests(container: RuntimeContainer): Promise<RuntimeContainer> {
   runtimeContainer = container;
+  runtimeContainerPromise = Promise.resolve(container);
+  return container;
 }
 
 const DEFAULT_RUNTIME_USERS: AuthUser[] = [
