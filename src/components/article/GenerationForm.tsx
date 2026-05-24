@@ -31,6 +31,7 @@ export default function GenerationForm() {
   const [lastFailure, setLastFailure] = useState("");
   const [createdArticleId, setCreatedArticleId] = useState("");
   const canGenerate = isGenerationInputReady(input);
+  const inputsDisabled = submitState === "submitting";
 
   function updateField(field: keyof GenerationFormInput) {
     return (event: { target: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement }) => {
@@ -133,6 +134,7 @@ export default function GenerationForm() {
                   <input
                     checked={selected}
                     name="category"
+                    disabled={inputsDisabled}
                     onChange={() => updateCategory(option.value)}
                     required
                     style={styles.radio}
@@ -152,6 +154,7 @@ export default function GenerationForm() {
           <input
             autoComplete="off"
             name="topic"
+            disabled={inputsDisabled}
             onChange={updateField("topic")}
             placeholder="如：AI Agent 产品化趋势"
             required
@@ -165,6 +168,7 @@ export default function GenerationForm() {
             <span style={styles.label}>目标读者</span>
             <input
               name="audience"
+              disabled={inputsDisabled}
               onChange={updateField("audience")}
               placeholder="如：产品经理、创业者"
               style={styles.input}
@@ -176,6 +180,7 @@ export default function GenerationForm() {
             <span style={styles.label}>文章风格</span>
             <input
               name="style"
+              disabled={inputsDisabled}
               onChange={updateField("style")}
               placeholder="如：克制、深度、观点鲜明"
               style={styles.input}
@@ -186,7 +191,13 @@ export default function GenerationForm() {
 
         <label style={styles.field}>
           <span style={styles.label}>篇幅要求</span>
-          <select name="length" onChange={updateField("length")} style={styles.input} value={input.length}>
+          <select
+            name="length"
+            disabled={inputsDisabled}
+            onChange={updateField("length")}
+            style={styles.input}
+            value={input.length}
+          >
             <option value="">默认篇幅</option>
             <option value="800-1000 字">800-1000 字</option>
             <option value="1200-1500 字">1200-1500 字</option>
@@ -198,6 +209,7 @@ export default function GenerationForm() {
           <span style={styles.label}>参考素材</span>
           <textarea
             name="references"
+            disabled={inputsDisabled}
             onChange={updateField("references")}
             placeholder="每行一条参考素材"
             rows={5}

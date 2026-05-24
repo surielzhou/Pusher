@@ -138,6 +138,35 @@ describe("article generation page", () => {
     );
   });
 
+  it("disables generation inputs while submitting", async () => {
+    const formSource = await readRequiredSource("src/components/article/GenerationForm.tsx");
+
+    assertMatches(
+      formSource,
+      /inputsDisabled\s*=\s*submitState === "submitting"/,
+      "generation form should derive a shared submitting input disabled state"
+    );
+
+    for (const inputName of ["category", "topic", "audience", "style"]) {
+      assertMatches(
+        formSource,
+        new RegExp(`<input[\\s\\S]*?name="${inputName}"[\\s\\S]*?disabled=\\{inputsDisabled\\}`),
+        `${inputName} input should be disabled while submitting`
+      );
+    }
+
+    assertMatches(
+      formSource,
+      /<select[\s\S]*?name="length"[\s\S]*?disabled=\{inputsDisabled\}/,
+      "length select should be disabled while submitting"
+    );
+    assertMatches(
+      formSource,
+      /<textarea[\s\S]*?name="references"[\s\S]*?disabled=\{inputsDisabled\}/,
+      "references textarea should be disabled while submitting"
+    );
+  });
+
   it("reuses the created article when retrying generation after a failure", async () => {
     const formSource = await readRequiredSource("src/components/article/GenerationForm.tsx");
 
