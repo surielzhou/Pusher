@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { beforeEach, describe, it } from "node:test";
 
 import { GET as getArticle } from "../../src/app/api/articles/[articleId]/route.ts";
@@ -8,7 +11,12 @@ import { POST as preparePublish } from "../../src/app/api/articles/[articleId]/p
 import { GET as getReviewView, POST as submitReview } from "../../src/app/api/articles/[articleId]/review/route.ts";
 import { POST as submitForReview } from "../../src/app/api/articles/[articleId]/review-submission/route.ts";
 import { GET as listArticles, POST as createArticle } from "../../src/app/api/articles/route.ts";
-import { resetRuntimeContainerForTests } from "../../src/services/runtimeContainer.ts";
+import {
+  createRuntimeContainerFromPersistence,
+  resetRuntimeContainerForTests,
+  setRuntimeContainerForTests
+} from "../../src/services/runtimeContainer.ts";
+import { createFileRuntimePersistence } from "../../src/services/runtimePersistence.ts";
 
 describe("api runtime", () => {
   beforeEach(() => {
@@ -16,125 +24,147 @@ describe("api runtime", () => {
   });
 
   it("runs creation, generation, editing, review, and publish preparation through HTTP routes", async () => {
-    const createdResponse = await createArticle(
-      jsonRequest("/api/articles", {
-        category: "tech_internet",
-        topic: "AI Agent 产品入口",
-        audience: "产品经理"
-      })
-    );
-    const created = await parseJson(createdResponse);
+    const tempDir = await mkdtemp(join(tmpdir(), "pusher-api-runtime-"));
+    const snapshotPath = join(tempDir, "runtime.json");
 
-    assert.equal(createdResponse.status, 201);
-    assert.match(created.data.articleId, /^article_/);
-    assert.equal(created.data.status, "drafting");
+    try {
+      await setRuntimeContainerForTests(
+        await createRuntimeContainerFromPersistence({
+          persistence: createFileRuntimePersistence(snapshotPath)
+        })
+      );
 
-    const articleId = created.data.articleId as string;
-    const generatedResponse = await generateDraft(jsonRequest(`/api/articles/${articleId}/generate`), {
-      params: { articleId }
-    });
-    const generated = await parseJson(generatedResponse);
+      const createdResponse = await createArticle(
+        jsonRequest("/api/articles", {
+          category: "tech_internet",
+          topic: "AI Agent 产品入口",
+          audience: "产品经理"
+        })
+      );
+      const created = await parseJson(createdResponse);
 
-    assert.equal(generatedResponse.status, 200);
-    assert.deepEqual(generated.data, {
-      articleId,
-      status: "editing",
-      contentVersion: 2
-    });
+      assert.equal(createdResponse.status, 201);
+      assert.match(created.data.articleId, /^article_/);
+      assert.equal(created.data.status, "drafting");
 
-    const editedResponse = await saveContent(
-      jsonRequest(`/api/articles/${articleId}/content`, {
-        title: "编辑后的 AI Agent 产品观察",
-        summary: "编辑后的摘要，面向公众号读者。",
-        body: "编辑后的正文，补充产品入口、业务流程和团队协作变化。"
-      }),
-      { params: { articleId } }
-    );
-    const edited = await parseJson(editedResponse);
+      const articleId = created.data.articleId as string;
+      const generatedResponse = await generateDraft(jsonRequest(`/api/articles/${articleId}/generate`), {
+        params: { articleId }
+      });
+      const generated = await parseJson(generatedResponse);
 
-    assert.equal(editedResponse.status, 200);
-    assert.equal(edited.data.contentVersion, 3);
+      assert.equal(generatedResponse.status, 200);
+      assert.deepEqual(generated.data, {
+        articleId,
+        status: "editing",
+        contentVersion: 2
+      });
 
-    const submittedResponse = await submitForReview(jsonRequest(`/api/articles/${articleId}/review-submission`), {
-      params: { articleId }
-    });
-    const submitted = await parseJson(submittedResponse);
+      const editedResponse = await saveContent(
+        jsonRequest(`/api/articles/${articleId}/content`, {
+          title: "编辑后的 AI Agent 产品观察",
+          summary: "编辑后的摘要，面向公众号读者。",
+          body: "编辑后的正文，补充产品入口、业务流程和团队协作变化。"
+        }),
+        { params: { articleId } }
+      );
+      const edited = await parseJson(editedResponse);
 
-    assert.equal(submittedResponse.status, 200);
-    assert.deepEqual(submitted.data, { status: "pending_review" });
+      assert.equal(editedResponse.status, 200);
+      assert.equal(edited.data.contentVersion, 3);
 
-    const reviewViewResponse = await getReviewView(new Request(`http://pusher.test/api/articles/${articleId}/review`), {
-      params: { articleId }
-    });
-    const reviewView = await parseJson(reviewViewResponse);
+      const submittedResponse = await submitForReview(jsonRequest(`/api/articles/${articleId}/review-submission`), {
+        params: { articleId }
+      });
+      const submitted = await parseJson(submittedResponse);
 
-    assert.equal(reviewViewResponse.status, 200);
-    assert.equal(reviewView.data.article.title, "编辑后的 AI Agent 产品观察");
-    assert.deepEqual(reviewView.data.checklist, {
-      hasTitle: true,
-      hasBody: true,
-      hasImageOrSuggestion: true,
-      categoryMatched: true
-    });
+      assert.equal(submittedResponse.status, 200);
+      assert.deepEqual(submitted.data, { status: "pending_review" });
 
-    const reviewedResponse = await submitReview(
-      jsonRequest(`/api/articles/${articleId}/review`, {
-        result: "approved",
-        comment: "内容完整，可以发布。",
-        reviewChecklist: {
-          titleChecked: true,
-          imageChecked: true
+      const reviewViewResponse = await getReviewView(
+        new Request(`http://pusher.test/api/articles/${articleId}/review`),
+        {
+          params: { articleId }
         }
-      }),
-      { params: { articleId } }
-    );
-    const reviewed = await parseJson(reviewedResponse);
+      );
+      const reviewView = await parseJson(reviewViewResponse);
 
-    assert.equal(reviewedResponse.status, 200);
-    assert.deepEqual(reviewed.data, {
-      status: "approved",
-      reviewedVersion: 3
-    });
+      assert.equal(reviewViewResponse.status, 200);
+      assert.equal(reviewView.data.article.title, "编辑后的 AI Agent 产品观察");
+      assert.deepEqual(reviewView.data.checklist, {
+        hasTitle: true,
+        hasBody: true,
+        hasImageOrSuggestion: true,
+        categoryMatched: true
+      });
 
-    const preparedResponse = await preparePublish(
-      jsonRequest(`/api/articles/${articleId}/publish-preparation`, {
-        channel: "wechat_manual"
-      }),
-      { params: { articleId } }
-    );
-    const prepared = await parseJson(preparedResponse);
+      const reviewedResponse = await submitReview(
+        jsonRequest(`/api/articles/${articleId}/review`, {
+          result: "approved",
+          comment: "内容完整，可以发布。",
+          reviewChecklist: {
+            titleChecked: true,
+            imageChecked: true
+          }
+        }),
+        { params: { articleId } }
+      );
+      const reviewed = await parseJson(reviewedResponse);
 
-    assert.equal(preparedResponse.status, 201);
-    assert.match(prepared.data.publishRecordId, /^publish_/);
-    assert.equal(prepared.data.status, "prepared");
-    assert.equal(prepared.data.articleStatus, "pending_publish");
-    assert.match(prepared.data.exportContent, /# 编辑后的 AI Agent 产品观察/);
+      assert.equal(reviewedResponse.status, 200);
+      assert.deepEqual(reviewed.data, {
+        status: "approved",
+        reviewedVersion: 3
+      });
 
-    const reloadedDetailResponse = await getArticle(new Request(`http://pusher.test/api/articles/${articleId}`), {
-      params: { articleId }
-    });
-    const reloadedDetail = await parseJson(reloadedDetailResponse);
+      const preparedResponse = await preparePublish(
+        jsonRequest(`/api/articles/${articleId}/publish-preparation`, {
+          channel: "wechat_manual"
+        }),
+        { params: { articleId } }
+      );
+      const prepared = await parseJson(preparedResponse);
 
-    assert.equal(reloadedDetailResponse.status, 200);
-    assert.equal(reloadedDetail.data.article.status, "pending_publish");
-    assert.equal(reloadedDetail.data.latestPublish.status, "prepared");
+      assert.equal(preparedResponse.status, 201);
+      assert.match(prepared.data.publishRecordId, /^publish_/);
+      assert.equal(prepared.data.status, "prepared");
+      assert.equal(prepared.data.articleStatus, "pending_publish");
+      assert.match(prepared.data.exportContent, /# 编辑后的 AI Agent 产品观察/);
 
-    const detailResponse = await getArticle(new Request(`http://pusher.test/api/articles/${articleId}`), {
-      params: { articleId }
-    });
-    const detail = await parseJson(detailResponse);
+      await setRuntimeContainerForTests(
+        await createRuntimeContainerFromPersistence({
+          persistence: createFileRuntimePersistence(snapshotPath)
+        })
+      );
 
-    assert.equal(detailResponse.status, 200);
-    assert.equal(detail.data.article.status, "pending_publish");
-    assert.equal(detail.data.latestReview.result, "approved");
-    assert.equal(detail.data.latestPublish.status, "prepared");
+      const reloadedDetailResponse = await getArticle(new Request(`http://pusher.test/api/articles/${articleId}`), {
+        params: { articleId }
+      });
+      const reloadedDetail = await parseJson(reloadedDetailResponse);
 
-    const listResponse = await listArticles(new Request("http://pusher.test/api/articles?status=pending_publish"));
-    const list = await parseJson(listResponse);
+      assert.equal(reloadedDetailResponse.status, 200);
+      assert.equal(reloadedDetail.data.article.status, "pending_publish");
+      assert.equal(reloadedDetail.data.latestPublish.status, "prepared");
 
-    assert.equal(listResponse.status, 200);
-    assert.equal(list.data.total, 1);
-    assert.equal(list.data.items[0].article.id, articleId);
+      const detailResponse = await getArticle(new Request(`http://pusher.test/api/articles/${articleId}`), {
+        params: { articleId }
+      });
+      const detail = await parseJson(detailResponse);
+
+      assert.equal(detailResponse.status, 200);
+      assert.equal(detail.data.article.status, "pending_publish");
+      assert.equal(detail.data.latestReview.result, "approved");
+      assert.equal(detail.data.latestPublish.status, "prepared");
+
+      const listResponse = await listArticles(new Request("http://pusher.test/api/articles?status=pending_publish"));
+      const list = await parseJson(listResponse);
+
+      assert.equal(listResponse.status, 200);
+      assert.equal(list.data.total, 1);
+      assert.equal(list.data.items[0].article.id, articleId);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 
   it("returns stable code and message for lifecycle errors", async () => {

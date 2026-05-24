@@ -1,5 +1,6 @@
 import type { GenerationScope } from "../../../../../adapters/ai/textGenerationAdapter.ts";
-import { runRuntimeMutation } from "../../../../../services/runtimeContainer.ts";
+import { GenerationServiceError } from "../../../../../services/generationService.ts";
+import { getRuntimeContainerForApi, runRuntimeMutation } from "../../../../../services/runtimeContainer.ts";
 import {
   assertAllowedValue,
   getRouteParam,
@@ -19,16 +20,25 @@ export async function POST(request: Request, context: ApiRouteContext): Promise<
     const scopeInput = optionalString(body, "scope");
     const instruction = optionalString(body, "instruction");
 
-    return jsonData(
-      await runRuntimeMutation((runtime) => {
-        if (scopeInput || instruction) {
-          const scope = scopeInput ? assertAllowedValue(scopeInput, GENERATION_SCOPES, "scope") : undefined;
+    try {
+      return jsonData(
+        await runRuntimeMutation((runtime) => {
+          if (scopeInput || instruction) {
+            const scope = scopeInput ? assertAllowedValue(scopeInput, GENERATION_SCOPES, "scope") : undefined;
 
-          return runtime.generationService.regenerateDraft(articleId, { scope, instruction });
-        }
+            return runtime.generationService.regenerateDraft(articleId, { scope, instruction });
+          }
 
-        return runtime.generationService.generateDraft(articleId);
-      })
-    );
+          return runtime.generationService.generateDraft(articleId);
+        })
+      );
+    } catch (error) {
+      if (error instanceof GenerationServiceError && error.code === "adapter_failed") {
+        const runtime = await getRuntimeContainerForApi();
+        await runtime.persist();
+      }
+
+      throw error;
+    }
   });
 }
