@@ -1,4 +1,4 @@
-import { getRuntimeContainer } from "../../../../../services/runtimeContainer.ts";
+import { runRuntimeMutation } from "../../../../../services/runtimeContainer.ts";
 import {
   getRouteParam,
   jsonData,
@@ -14,10 +14,12 @@ export async function POST(request: Request, context: ApiRouteContext): Promise<
     const body = await readOptionalJsonObject(request);
 
     return jsonData(
-      await getRuntimeContainer().publishPreparationService.preparePublish({
-        articleId,
-        channel: optionalString(body, "channel") ?? "wechat_manual"
-      }),
+      await runRuntimeMutation((runtime) =>
+        runtime.publishPreparationService.preparePublish({
+          articleId,
+          channel: optionalString(body, "channel") ?? "wechat_manual"
+        })
+      ),
       201
     );
   });

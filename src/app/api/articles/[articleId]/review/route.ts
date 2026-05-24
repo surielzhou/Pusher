@@ -1,5 +1,5 @@
 import { REVIEW_RESULTS } from "../../../../../domain/review.ts";
-import { getRuntimeContainer } from "../../../../../services/runtimeContainer.ts";
+import { getRuntimeContainerForApi, runRuntimeMutation } from "../../../../../services/runtimeContainer.ts";
 import {
   assertAllowedValue,
   castReviewResult,
@@ -16,8 +16,9 @@ import {
 export async function GET(_request: Request, context: ApiRouteContext): Promise<Response> {
   return withApiHandler(async () => {
     const articleId = await getRouteParam(context, "articleId");
+    const runtime = await getRuntimeContainerForApi();
 
-    return jsonData(await getRuntimeContainer().reviewService.getReviewView(articleId));
+    return jsonData(await runtime.reviewService.getReviewView(articleId));
   });
 }
 
@@ -28,12 +29,14 @@ export async function POST(request: Request, context: ApiRouteContext): Promise<
     const result = castReviewResult(assertAllowedValue(requiredString(body, "result"), REVIEW_RESULTS, "result"));
 
     return jsonData(
-      await getRuntimeContainer().reviewService.submitReview({
-        articleId,
-        result,
-        comment: optionalString(body, "comment"),
-        reviewChecklist: optionalBooleanRecord(body, "reviewChecklist")
-      })
+      await runRuntimeMutation((runtime) =>
+        runtime.reviewService.submitReview({
+          articleId,
+          result,
+          comment: optionalString(body, "comment"),
+          reviewChecklist: optionalBooleanRecord(body, "reviewChecklist")
+        })
+      )
     );
   });
 }

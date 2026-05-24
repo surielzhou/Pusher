@@ -1,5 +1,5 @@
 import type { ArticleListQuery, CreateArticleInput } from "../../../services/contracts.ts";
-import { getRuntimeContainer } from "../../../services/runtimeContainer.ts";
+import { getRuntimeContainerForApi, runRuntimeMutation } from "../../../services/runtimeContainer.ts";
 import {
   castCategory,
   castStatus,
@@ -26,7 +26,8 @@ export async function GET(request: Request): Promise<Response> {
       pageSize: optionalPositiveIntegerSearchParam(url, "pageSize")
     };
 
-    return jsonData(await getRuntimeContainer().articleService.listArticles(query));
+    const runtime = await getRuntimeContainerForApi();
+    return jsonData(await runtime.articleService.listArticles(query));
   });
 }
 
@@ -42,6 +43,6 @@ export async function POST(request: Request): Promise<Response> {
       references: optionalStringArray(body, "references")
     };
 
-    return jsonData(await getRuntimeContainer().articleService.createArticle(input), 201);
+    return jsonData(await runRuntimeMutation((runtime) => runtime.articleService.createArticle(input)), 201);
   });
 }

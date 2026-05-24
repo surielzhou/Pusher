@@ -1,4 +1,4 @@
-import { getRuntimeContainer } from "../../../../../services/runtimeContainer.ts";
+import { runRuntimeMutation } from "../../../../../services/runtimeContainer.ts";
 import {
   getRouteParam,
   jsonData,
@@ -13,6 +13,8 @@ export async function PATCH(request: Request, context: ApiRouteContext): Promise
     const articleId = await getRouteParam(context, "articleId");
     const body = await readJsonObject(request);
 
-    return jsonData(await getRuntimeContainer().editorService.saveArticleContent(articleId, pickContentPatch(body)));
+    return jsonData(
+      await runRuntimeMutation((runtime) => runtime.editorService.saveArticleContent(articleId, pickContentPatch(body)))
+    );
   });
 }

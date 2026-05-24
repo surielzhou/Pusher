@@ -1,5 +1,5 @@
 import type { GenerationScope } from "../../../../../adapters/ai/textGenerationAdapter.ts";
-import { getRuntimeContainer } from "../../../../../services/runtimeContainer.ts";
+import { runRuntimeMutation } from "../../../../../services/runtimeContainer.ts";
 import {
   assertAllowedValue,
   getRouteParam,
@@ -18,14 +18,17 @@ export async function POST(request: Request, context: ApiRouteContext): Promise<
     const body = await readOptionalJsonObject(request);
     const scopeInput = optionalString(body, "scope");
     const instruction = optionalString(body, "instruction");
-    const runtime = getRuntimeContainer();
 
-    if (scopeInput || instruction) {
-      const scope = scopeInput ? assertAllowedValue(scopeInput, GENERATION_SCOPES, "scope") : undefined;
+    return jsonData(
+      await runRuntimeMutation((runtime) => {
+        if (scopeInput || instruction) {
+          const scope = scopeInput ? assertAllowedValue(scopeInput, GENERATION_SCOPES, "scope") : undefined;
 
-      return jsonData(await runtime.generationService.regenerateDraft(articleId, { scope, instruction }));
-    }
+          return runtime.generationService.regenerateDraft(articleId, { scope, instruction });
+        }
 
-    return jsonData(await runtime.generationService.generateDraft(articleId));
+        return runtime.generationService.generateDraft(articleId);
+      })
+    );
   });
 }

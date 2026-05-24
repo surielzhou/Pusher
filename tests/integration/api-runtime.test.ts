@@ -110,6 +110,15 @@ describe("api runtime", () => {
     assert.equal(prepared.data.articleStatus, "pending_publish");
     assert.match(prepared.data.exportContent, /# 编辑后的 AI Agent 产品观察/);
 
+    const reloadedDetailResponse = await getArticle(new Request(`http://pusher.test/api/articles/${articleId}`), {
+      params: { articleId }
+    });
+    const reloadedDetail = await parseJson(reloadedDetailResponse);
+
+    assert.equal(reloadedDetailResponse.status, 200);
+    assert.equal(reloadedDetail.data.article.status, "pending_publish");
+    assert.equal(reloadedDetail.data.latestPublish.status, "prepared");
+
     const detailResponse = await getArticle(new Request(`http://pusher.test/api/articles/${articleId}`), {
       params: { articleId }
     });

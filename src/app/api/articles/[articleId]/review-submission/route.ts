@@ -1,10 +1,10 @@
-import { getRuntimeContainer } from "../../../../../services/runtimeContainer.ts";
+import { runRuntimeMutation } from "../../../../../services/runtimeContainer.ts";
 import { getRouteParam, jsonData, type ApiRouteContext, withApiHandler } from "../../../_http.ts";
 
 export async function POST(_request: Request, context: ApiRouteContext): Promise<Response> {
   return withApiHandler(async () => {
     const articleId = await getRouteParam(context, "articleId");
 
-    return jsonData(await getRuntimeContainer().editorService.submitForReview(articleId));
+    return jsonData(await runRuntimeMutation((runtime) => runtime.editorService.submitForReview(articleId)));
   });
 }
