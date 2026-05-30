@@ -89,6 +89,7 @@ const requiredFiles = [
   "tests/e2e/version-history.spec.ts",
   "docs/部署验收/Phase8数据持久化说明.md",
   "docs/部署验收/Phase8生产化验收清单.md",
+  "docs/部署验收/Phase9本地运行验收记录.md",
   "docs/superpowers/specs/2026-05-24-phase-9-local-runtime-design.md",
   "docs/superpowers/plans/2026-05-24-phase-9-local-runtime.md",
   "docs/开发计划/Phase8并行开发拆分.md",
