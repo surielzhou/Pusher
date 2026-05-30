@@ -41,6 +41,13 @@ describe("article editing E2E", () => {
     ]);
   });
 
+  it("loads article editing data from the runtime instead of static builders", async () => {
+    const pageSource = await readRequiredSource(editPagePath);
+
+    assertMatches(pageSource, /getRuntimeEditPageData/, "edit page should load article detail from runtime page data");
+    assert.doesNotMatch(pageSource, /function buildArticle|function buildImages|function buildSources/, "edit page should not build static article fixtures");
+  });
+
   it("lets users edit title, summary, body, images, preview, save, and submit review", async () => {
     const editorSource = await readRequiredSource(articleEditorPath);
     const imagePanelSource = await readRequiredSource(imagePanelPath);

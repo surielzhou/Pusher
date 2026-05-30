@@ -46,6 +46,13 @@ describe("article review E2E", () => {
     ]);
   });
 
+  it("loads review data from the runtime instead of static builders", async () => {
+    const pageSource = await readRequiredSource(reviewPagePath);
+
+    assertMatches(pageSource, /getRuntimeReviewPageData/, "review page should load review data from runtime page data");
+    assert.doesNotMatch(pageSource, /function buildArticle|function buildImages|function buildLatestReview/, "review page should not build static article fixtures");
+  });
+
   it("shows preview, image list, content category, generation config, and risk note", async () => {
     const pageSource = await readRequiredSource(reviewPagePath);
     const panelSource = await readRequiredSource(reviewPanelPath);

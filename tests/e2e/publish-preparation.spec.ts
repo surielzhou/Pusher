@@ -34,6 +34,13 @@ describe("publish preparation E2E", () => {
     await Promise.all([readRequiredSource(publishPanelPath), readRequiredSource(articlePreviewPath)]);
   });
 
+  it("loads publish data from the runtime instead of static builders", async () => {
+    const pageSource = await readRequiredSource(publishPagePath);
+
+    assertMatches(pageSource, /getRuntimePublishPageData/, "publish page should load publish data from runtime page data");
+    assert.doesNotMatch(pageSource, /function buildArticle|function buildImages|function buildLatestPublish/, "publish page should not build static article fixtures");
+  });
+
   it("shows final title, summary, body preview, image checklist, and insertion positions", async () => {
     const pageSource = await readRequiredSource(publishPagePath);
     const panelSource = await readRequiredSource(publishPanelPath);
