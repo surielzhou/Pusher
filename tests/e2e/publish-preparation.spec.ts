@@ -63,6 +63,19 @@ describe("publish preparation E2E", () => {
     assertMatches(panelSource, /复制正文|copy-body|data-copy-target="body"/i, "publish panel should support copying body");
   });
 
+  it("creates publish preparation through the publish preparation API", async () => {
+    const panelSource = await readRequiredSource(publishPanelPath);
+
+    assertMatches(
+      panelSource,
+      /fetch\(`\/api\/articles\/\$\{article\.id\}\/publish-preparation`/,
+      "publish panel should call the publish preparation API"
+    );
+    assertMatches(panelSource, /生成发布准备|preparePublish/i, "publish panel should expose a publish preparation action");
+    assertMatches(panelSource, /window\.location\.reload\(\)/, "publish panel should refresh after preparation succeeds");
+    assertMatches(panelSource, /role="alert"/, "publish panel should display API errors inline");
+  });
+
   it("supports marking published or failed with a required failure reason", async () => {
     const panelSource = await readRequiredSource(publishPanelPath);
 

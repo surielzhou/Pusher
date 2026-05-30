@@ -1,3 +1,6 @@
+"use client";
+
+import { type FormEvent, useState } from "react";
 import type { Article } from "../../domain/article.ts";
 import type { ArticleImage } from "../../domain/image.ts";
 import type { PublishRecord } from "../../domain/publish.ts";
@@ -90,6 +93,35 @@ export default function PublishPreparationPanel({
   const paragraphs = getBodyParagraphs(article);
   const exportContent = buildExportContent(article, images);
   const imageChecklist = buildImageChecklist(images);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isPreparing, setIsPreparing] = useState(false);
+
+  async function handlePreparePublish(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (publishBlocked || isPreparing) return;
+
+    setIsPreparing(true);
+    setErrorMessage("");
+
+    try {
+      const response = await fetch(`/api/articles/${article.id}/publish-preparation`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          channel: "wechat_manual"
+        })
+      });
+
+      await assertApiSuccess(response);
+      window.location.reload();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "生成发布准备失败，请重试。");
+    } finally {
+      setIsPreparing(false);
+    }
+  }
 
   return (
     <section
@@ -174,6 +206,33 @@ export default function PublishPreparationPanel({
           {latestPublish.errorMessage ? `，失败原因：${latestPublish.errorMessage}` : ""}
         </div>
       ) : null}
+
+      {errorMessage ? (
+        <div
+          role="alert"
+          style={{
+            background: "#fff5f5",
+            border: "1px solid #ffd6d6",
+            borderRadius: 8,
+            color: "#9b1c1c",
+            marginTop: 14,
+            padding: 12
+          }}
+        >
+          {errorMessage}
+        </div>
+      ) : null}
+
+      <form onSubmit={handlePreparePublish} style={{ display: "grid", gap: 10, marginTop: 16 }}>
+        <input name="channel" type="hidden" value="wechat_manual" />
+        <button
+          disabled={publishBlocked || isPreparing}
+          style={getButtonStyle(publishBlocked || isPreparing, "#0f766e")}
+          type="submit"
+        >
+          {isPreparing ? "生成中..." : "生成发布准备"}
+        </button>
+      </form>
 
       <div style={{ display: "grid", gap: 18, marginTop: 20 }}>
         <section
@@ -371,4 +430,11 @@ export default function PublishPreparationPanel({
       </div>
     </section>
   );
+}
+
+async function assertApiSuccess(response: Response): Promise<void> {
+  if (response.ok) return;
+
+  const body = (await response.json().catch(() => undefined)) as { error?: { message?: string } } | undefined;
+  throw new Error(body?.error?.message ?? "请求失败，请重试。");
 }

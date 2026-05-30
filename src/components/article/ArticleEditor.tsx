@@ -1,3 +1,6 @@
+"use client";
+
+import { type FormEvent, useState } from "react";
 import type { Article } from "../../domain/article.ts";
 import type { ReviewRecord } from "../../domain/review.ts";
 
@@ -18,6 +21,63 @@ const missingFieldLabels: Record<string, string> = {
 export default function ArticleEditor({ article, latestReview, missingFields, readOnly }: ArticleEditorProps) {
   const isPendingReview = article.status === "pending_review";
   const formReadOnly = readOnly || isPendingReview;
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  async function handleSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (formReadOnly || isSaving) return;
+
+    const formData = new FormData(event.currentTarget);
+    setIsSaving(true);
+    setErrorMessage("");
+
+    try {
+      const response = await fetch(`/api/articles/${article.id}/content`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          title: String(formData.get("title") ?? ""),
+          summary: String(formData.get("summary") ?? ""),
+          body: String(formData.get("body") ?? "")
+        })
+      });
+
+      await assertApiSuccess(response);
+      window.location.reload();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "保存内容失败，请重试。");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleSubmitReview() {
+    if (formReadOnly || missingFields.length > 0 || isSubmittingReview) return;
+
+    setIsSubmittingReview(true);
+    setErrorMessage("");
+
+    try {
+      const response = await fetch(`/api/articles/${article.id}/review-submission`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({})
+      });
+
+      await assertApiSuccess(response);
+      window.location.assign(`/articles/${article.id}/review`);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "提交 review 失败，请重试。");
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  }
 
   return (
     <section
@@ -89,7 +149,7 @@ export default function ArticleEditor({ article, latestReview, missingFields, re
         </div>
       ) : null}
 
-      <form style={{ display: "grid", gap: 16, marginTop: 20 }}>
+      <form onSubmit={handleSave} style={{ display: "grid", gap: 16, marginTop: 20 }}>
         <label style={{ color: "#243b53", display: "grid", fontSize: 13, fontWeight: 700, gap: 6 }}>
           标题
           <input
@@ -130,11 +190,26 @@ export default function ArticleEditor({ article, latestReview, missingFields, re
           />
         </label>
 
+        {errorMessage ? (
+          <div
+            role="alert"
+            style={{
+              background: "#fff5f5",
+              border: "1px solid #ffd6d6",
+              borderRadius: 8,
+              color: "#9b1c1c",
+              padding: 12
+            }}
+          >
+            {errorMessage}
+          </div>
+        ) : null}
+
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
           <button
-            disabled={formReadOnly}
+            disabled={formReadOnly || isSaving}
             style={{
-              background: formReadOnly ? "#d9e2ec" : "#0f766e",
+              background: formReadOnly || isSaving ? "#d9e2ec" : "#0f766e",
               border: 0,
               borderRadius: 6,
               color: "#ffffff",
@@ -144,12 +219,13 @@ export default function ArticleEditor({ article, latestReview, missingFields, re
             }}
             type="submit"
           >
-            保存内容
+            {isSaving ? "保存中..." : "保存内容"}
           </button>
           <button
-            disabled={formReadOnly || missingFields.length > 0}
+            disabled={formReadOnly || missingFields.length > 0 || isSubmittingReview}
+            onClick={handleSubmitReview}
             style={{
-              background: formReadOnly || missingFields.length > 0 ? "#d9e2ec" : "#334e68",
+              background: formReadOnly || missingFields.length > 0 || isSubmittingReview ? "#d9e2ec" : "#334e68",
               border: 0,
               borderRadius: 6,
               color: "#ffffff",
@@ -159,10 +235,17 @@ export default function ArticleEditor({ article, latestReview, missingFields, re
             }}
             type="button"
           >
-            提交 review
+            {isSubmittingReview ? "提交中..." : "提交 review"}
           </button>
         </div>
       </form>
     </section>
   );
+}
+
+async function assertApiSuccess(response: Response): Promise<void> {
+  if (response.ok) return;
+
+  const body = (await response.json().catch(() => undefined)) as { error?: { message?: string } } | undefined;
+  throw new Error(body?.error?.message ?? "请求失败，请重试。");
 }

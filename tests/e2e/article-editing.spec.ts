@@ -63,6 +63,22 @@ describe("article editing E2E", () => {
     assertMatches(combinedSource, /提交\s*review|submitForReview|pending_review/i, "editor should submit for review");
   });
 
+  it("saves and submits review through article API endpoints", async () => {
+    const editorSource = await readRequiredSource(articleEditorPath);
+
+    assertMatches(
+      editorSource,
+      /fetch\(`\/api\/articles\/\$\{article\.id\}\/content`/,
+      "editor should save through the content API"
+    );
+    assertMatches(
+      editorSource,
+      /fetch\(`\/api\/articles\/\$\{article\.id\}\/review-submission`/,
+      "editor should submit review through the review submission API"
+    );
+    assertMatches(editorSource, /role="alert"/, "editor should display API errors inline");
+  });
+
   it("supports image suggestions and uploaded image replacement", async () => {
     const imagePanelSource = await readRequiredSource(imagePanelPath);
 

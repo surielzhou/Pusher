@@ -86,6 +86,18 @@ describe("article review E2E", () => {
     assertMatches(panelSource, /submitReview|ReviewService|reviewChecklist/i, "review panel should wire decisions to review submission");
   });
 
+  it("submits review decisions through the review API", async () => {
+    const panelSource = await readRequiredSource(reviewPanelPath);
+
+    assertMatches(panelSource, /fetch\(`\/api\/articles\/\$\{article\.id\}\/review`/, "review panel should call the review API");
+    assertMatches(
+      panelSource,
+      /window\.location\.assign\(`\/articles\/\$\{article\.id\}\/publish`/,
+      "approved reviews should move to publish preparation"
+    );
+    assertMatches(panelSource, /role="alert"/, "review panel should display API errors inline");
+  });
+
   it("requires a review comment before rejecting for edits", async () => {
     const panelSource = await readRequiredSource(reviewPanelPath);
 
