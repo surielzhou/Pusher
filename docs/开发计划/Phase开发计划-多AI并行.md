@@ -757,6 +757,32 @@ Phase 7 完成并合入 `main`。
 - [x] 运行 `npm run typecheck`，预期通过。
 - [x] 运行 `npm run build`，预期通过。
 
+## Phase 9：本地真实运行闭环
+
+### 目标
+
+将创作主链路从静态演示推进到本地可运行闭环：创建、生成、编辑、提交 review、审核通过和发布准备均通过 API Runtime 执行，并写入本地 JSON 快照。
+
+### 依赖
+
+Phase 8 完成并合入 `main`，且 `phase-8-complete` tag 已推送。
+
+### 可并行工作包
+
+| Worker | 写入边界 | 说明 |
+| --- | --- | --- |
+| AI-9A Runtime 持久化 | `src/services/runtimePersistence.ts`、`src/services/runtimeContainer.ts`、`tests/integration/runtime-persistence.test.ts` | Runtime 启动加载 JSON 快照，mutation 后保存 |
+| AI-9B API mutation 收敛 | `src/app/api/articles/**`、`tests/integration/api-runtime.test.ts` | API route 使用 async runtime 并保存成功 mutation |
+| AI-9C 创建与编辑页面接入 | `src/components/article/GenerationForm.tsx`、`src/components/article/ArticleEditor.tsx`、`src/app/articles/[articleId]/edit/page.tsx` | 创建、生成、保存、提交 review 接 API |
+| AI-9D Review 与发布准备页面接入 | `src/app/articles/[articleId]/review/page.tsx`、`src/components/review/ReviewPanel.tsx`、`src/app/articles/[articleId]/publish/page.tsx`、`src/components/publish/PublishPreparationPanel.tsx` | 审核和发布准备接 API |
+
+### Phase 9 集成验证
+
+- [x] 运行 `npm test`，预期通过。
+- [x] 运行 `npm run test:e2e`，预期通过。
+- [x] 运行 `npm run typecheck`，预期通过。
+- [x] 运行 `npm run build`，预期通过。
+
 ## 跨 Phase 集成检查点
 
 每个 phase 完成后，协调者执行以下检查：

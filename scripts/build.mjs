@@ -39,6 +39,8 @@ const requiredFiles = [
   "src/services/contentValidationService.ts",
   "src/services/materialService.ts",
   "src/services/runtimeContainer.ts",
+  "src/services/runtimePersistence.ts",
+  "src/services/runtimePageData.ts",
   "src/services/scheduleService.ts",
   "src/services/sourceService.ts",
   "src/services/versionService.ts",
@@ -67,6 +69,7 @@ const requiredFiles = [
   "tests/integration/api-runtime.test.ts",
   "tests/integration/article-lifecycle.test.ts",
   "tests/integration/persistence.test.ts",
+  "tests/integration/runtime-persistence.test.ts",
   "tests/unit/repositories/repositories.test.ts",
   "tests/unit/domain/permissions.test.ts",
   "tests/unit/services/authService.test.ts",
@@ -86,6 +89,8 @@ const requiredFiles = [
   "tests/e2e/version-history.spec.ts",
   "docs/部署验收/Phase8数据持久化说明.md",
   "docs/部署验收/Phase8生产化验收清单.md",
+  "docs/superpowers/specs/2026-05-24-phase-9-local-runtime-design.md",
+  "docs/superpowers/plans/2026-05-24-phase-9-local-runtime.md",
   "docs/开发计划/Phase8并行开发拆分.md",
   "docs/开发计划/Phase1合并记录.md"
 ];
